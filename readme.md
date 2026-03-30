@@ -85,7 +85,7 @@
   * On success, leads to **Session Detail** or **My Sessions**.
 
 ## Wireframes
-[Wireframes.pdf](https://github.com/user-attachments/files/26362566/Wireframes.pdf)
+![](https://github.com/user-attachments/files/26362566/Wireframes.pdf)
 
 Suggested sketches (one flow per sheet helps):
 
