@@ -9,6 +9,12 @@
 5. **CampusPulse** — Clubs and orgs post events; students filter by category, RSVP, and add events to calendar.
 6. **FocusFlow** — Pomodoro timer tied to a class/task list, weekly stats, and optional “study with me” live status with friends.
 7. **LocalLoop** — Hyper-local bulletin: free stuff, rides to airport, sublets near campus; report/flag for safety.
+8. **FlashMap** — flashcard app that uses your camera to scan textbook pages and auto-generate quiz questions.
+9. **GymBuddy** — find people at your campus gym who want to work out at the same time, with workout plan sharing.
+10. **TripSplit** — group travel planner with real-time expense splitting, itinerary voting, and maps integration.
+11. **WatchRoulette** — can't decide what to watch? Friends vote simultaneously and it picks based on group consensus.
+12. **DormChef** — recipes filtered by what's available in a dining hall or dorm kitchen, with nutrition info.
+13. **VibeCheck** — anonymous mood check-in app for friend groups, shows collective energy without revealing who posted what.
 
 ---
 
