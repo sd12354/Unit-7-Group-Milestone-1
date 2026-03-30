@@ -104,7 +104,19 @@ Example Markdown image (replace with your committed image path or URL after you 
 
 ### [BONUS] Digital Wireframes & Mockups
 
-_Add Figma exports or screenshots here._
+Figma Mockups
+<img width="276" height="585" alt="Screenshot 2026-03-30 at 6 41 24 PM" src="https://github.com/user-attachments/assets/0157554a-aef4-4f73-ba3b-7b32316ab27c" />
+<img width="278" height="587" alt="Screenshot 2026-03-30 at 6 41 37 PM" src="https://github.com/user-attachments/assets/fd35c0d3-cac0-4675-9da4-1938e4b7f556" />
+<img width="274" height="584" alt="Screenshot 2026-03-30 at 6 42 11 PM" src="https://github.com/user-attachments/assets/35c2bb51-26ed-4b8b-9aa8-322263db42df" />
+<img width="276" height="582" alt="Screenshot 2026-03-30 at 6 42 28 PM" src="https://github.com/user-attachments/assets/979e5a03-5034-4eb7-8611-7d65eab9b7bc" />
+<img width="278" height="583" alt="Screenshot 2026-03-30 at 6 42 42 PM" src="https://github.com/user-attachments/assets/8e41d982-7a44-4c35-b422-274f1e416856" />
+<img width="274" height="577" alt="Screenshot 2026-03-30 at 6 45 47 PM" src="https://github.com/user-attachments/assets/d2d28006-0fd7-4022-bae7-c3673eea1a74" />
+
+
+
+
+
+
 
 ### [BONUS] Interactive Prototype
 
