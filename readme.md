@@ -85,7 +85,7 @@
   * On success, leads to **Session Detail** or **My Sessions**.
 
 ## Wireframes
-![](https://github.com/user-attachments/files/26362566/Wireframes.pdf)
+<img width="589" height="799" alt="Screenshot 2026-03-30 at 6 55 05 PM" src="https://github.com/user-attachments/assets/a7f0b5fb-9013-43b9-b91a-a18d52d3fdb5" />
 
 Suggested sketches (one flow per sheet helps):
 
