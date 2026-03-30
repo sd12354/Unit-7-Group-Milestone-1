@@ -85,8 +85,7 @@
   * On success, leads to **Session Detail** or **My Sessions**.
 
 ## Wireframes
-
-_Add picture of your hand sketched wireframes in this section._
+[Wireframes.pdf](https://github.com/user-attachments/files/26362566/Wireframes.pdf)
 
 Suggested sketches (one flow per sheet helps):
 
