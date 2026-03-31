@@ -47,41 +47,41 @@
 
 ### 2. Screen Archetypes
 
-- [ ] **Login / Sign Up Screen**
+- [x] **Login / Sign Up Screen**
   * Required: User can register and log in.
 
-- [ ] **Home — Session Feed**
+- [x] **Home — Session Feed**
   * Required: User can browse upcoming sessions and pull to refresh.
 
-- [ ] **Session Detail Screen**
+- [x] **Session Detail Screen**
   * Required: User can view full session info, attendee list, join or leave.
 
-- [ ] **Create / Edit Session Screen**
+- [x] **Create / Edit Session Screen**
   * Required: User can create a new session (host); optional: edit/cancel if host.
 
-- [ ] **Profile Screen**
+- [x] **Profile Screen**
   * Required: User can view and edit display name, bio, optional photo.
 
-- [ ] **My Sessions Screen (or tab)**
+- [x] **My Sessions Screen (or tab)**
   * Required: User can see sessions they host and sessions they joined.
 
 ### 3. Navigation
 
 **Tab Navigation** (Tab to Screen)
 
-- [ ] **Home** — Session feed (upcoming sessions).
-- [ ] **Create** — New session form (could be a tab or a modal from Home; tab keeps flow obvious for milestone planning).
-- [ ] **My Sessions** — Hosted and joined sessions.
-- [ ] **Profile** — Current user profile and settings / log out.
+- [x] **Home** — Session feed (upcoming sessions).
+- [x] **Create** — New session form (could be a tab or a modal from Home; tab keeps flow obvious for milestone planning).
+- [x] **My Sessions** — Hosted and joined sessions.
+- [x] **Profile** — Current user profile and settings / log out.
 
 **Flow Navigation** (Screen to Screen)
 
-- [ ] **Session Feed**
+- [x] **Session Feed**
   * Leads to **Session Detail** (tap row).
-- [ ] **Session Detail**
+- [x] **Session Detail**
   * Leads to **Profile** (tap attendee) — optional MVP; can be stubbed.
   * Leads back to **Feed** or **My Sessions** after join/leave.
-- [ ] **Create Session**
+- [x] **Create Session**
   * On success, leads to **Session Detail** or **My Sessions**.
 
 ## Wireframes
