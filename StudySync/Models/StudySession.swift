@@ -1,9 +1,12 @@
 import Foundation
 import FirebaseFirestore
+import FirebaseFirestoreSwift
 
 /// Firestore-backed model for a study session.
-/// Maps to the `sessions` collection defined in Issue 5.
-struct StudySession: Identifiable, Codable {
+/// Maps to the `sessions` collection (Milestone 2 — Issue 5).
+/// Fields align with spec: title, subject, dateTime (`startTime`), location, capacity (`maxAttendees`),
+/// attendees (`attendeeIds`), hostId, description.
+struct StudySession: Identifiable, Codable, Equatable {
     @DocumentID var id: String?
 
     var title: String
@@ -16,7 +19,31 @@ struct StudySession: Identifiable, Codable {
     var hostId: String
     var attendeeIds: [String]
 
-    /// Computed — how many spots are left (nil means unlimited)
+    init(
+        id: String? = nil,
+        title: String,
+        subjectTag: String,
+        startTime: Date,
+        endTime: Date? = nil,
+        locationText: String,
+        description: String,
+        maxAttendees: Int?,
+        hostId: String,
+        attendeeIds: [String] = []
+    ) {
+        _id = DocumentID(wrappedValue: id)
+        self.title = title
+        self.subjectTag = subjectTag
+        self.startTime = startTime
+        self.endTime = endTime
+        self.locationText = locationText
+        self.description = description
+        self.maxAttendees = maxAttendees
+        self.hostId = hostId
+        self.attendeeIds = attendeeIds
+    }
+
+    /// Spots left for attendees (host excluded). `nil` max means unlimited.
     var spotsRemaining: Int? {
         guard let max = maxAttendees else { return nil }
         return max - attendeeIds.count
@@ -25,5 +52,9 @@ struct StudySession: Identifiable, Codable {
     var isFull: Bool {
         guard let spots = spotsRemaining else { return false }
         return spots <= 0
+    }
+
+    var attendeeCount: Int {
+        attendeeIds.count
     }
 }

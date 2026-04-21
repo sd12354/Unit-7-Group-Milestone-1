@@ -5,6 +5,8 @@ import SwiftUI
 /// display name/bio/photo, and wire Edit and Log Out buttons.
 struct ProfileView: View {
 
+    @EnvironmentObject private var authViewModel: AuthViewModel
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 12) {
@@ -20,6 +22,11 @@ struct ProfileView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 40)
+
+                Button("Sign out", role: .destructive) {
+                    authViewModel.signOut()
+                }
+                .padding(.top, 24)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle("Profile")
@@ -29,4 +36,5 @@ struct ProfileView: View {
 
 #Preview {
     ProfileView()
+        .environmentObject(AuthViewModel())
 }

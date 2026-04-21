@@ -1,30 +1,121 @@
 import SwiftUI
 
-/// Create screen — form for posting a new study session.
-/// TODO (Issue 6): Replace stub with a Form containing fields for title,
-/// subject tag, date/time picker, location, max attendees, and description.
-/// On submit, call SessionRepository.createSession() and navigate to the new session's detail.
+/// Create session form (Milestone 2 — Issue 6).
 struct CreateView: View {
 
+    @State private var title = ""
+    @State private var subjectTag = ""
+    @State private var dateTime = Date().addingTimeInterval(3600)
+    @State private var location = ""
+    @State private var maxAttendeesText = ""
+    @State private var description = ""
+
+    @State private var navigationPath = NavigationPath()
+    @State private var isSaving = false
+    @State private var saveError: String?
+
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 12) {
-                Image(systemName: "plus.circle")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.secondary)
+        NavigationStack(path: $navigationPath) {
+            Form {
+                Section("Session") {
+                    TextField("Title", text: $title)
+                    TextField("Subject / tag (e.g. CS 101)", text: $subjectTag)
+                    DatePicker("Date & time", selection: $dateTime)
+                    TextField("Location", text: $location, axis: .vertical)
+                        .lineLimit(1...3)
+                }
 
-                Text("Create")
-                    .font(.title2.weight(.semibold))
+                Section("Capacity") {
+                    TextField("Max attendees (optional)", text: $maxAttendeesText)
+                        .keyboardType(.numberPad)
+                    Text("Leave blank for unlimited.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
-                Text("Post a new study session here.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
+                Section("Details") {
+                    TextField("Description", text: $description, axis: .vertical)
+                        .lineLimit(3...8)
+                }
+
+                Section {
+                    Button(action: { Task { await saveSession() } }) {
+                        if isSaving {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
+                            }
+                        } else {
+                            Text("Create session")
+                        }
+                    }
+                    .disabled(isSaving || !isFormValid)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .navigationTitle("New Session")
+            .navigationDestination(for: String.self) { sessionId in
+                SessionDetailView(sessionId: sessionId)
+            }
+            .alert("Could not create session", isPresented: Binding(
+                get: { saveError != nil },
+                set: { if !$0 { saveError = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveError = nil }
+            } message: {
+                Text(saveError ?? "")
+            }
         }
+    }
+
+    private var isFormValid: Bool {
+        !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !subjectTag.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !location.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var parsedCapacity: Int? {
+        let t = maxAttendeesText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if t.isEmpty { return nil }
+        guard let n = Int(t), n > 0 else { return nil }
+        return n
+    }
+
+    @MainActor
+    private func saveSession() async {
+        guard isFormValid else { return }
+        isSaving = true
+        defer { isSaving = false }
+
+        let cap = parsedCapacity
+        if !maxAttendeesText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, cap == nil {
+            saveError = "Max attendees must be a positive number, or leave the field empty."
+            return
+        }
+
+        do {
+            let id = try await SessionRepository.createSession(
+                title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                subjectTag: subjectTag.trimmingCharacters(in: .whitespacesAndNewlines),
+                dateTime: dateTime,
+                location: location.trimmingCharacters(in: .whitespacesAndNewlines),
+                capacity: cap,
+                description: description.trimmingCharacters(in: .whitespacesAndNewlines)
+            )
+            navigationPath.append(id)
+            clearFormAfterSuccess()
+        } catch {
+            saveError = error.localizedDescription
+        }
+    }
+
+    private func clearFormAfterSuccess() {
+        title = ""
+        subjectTag = ""
+        dateTime = Date().addingTimeInterval(3600)
+        location = ""
+        maxAttendeesText = ""
+        description = ""
     }
 }
 
