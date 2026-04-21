@@ -1,13 +1,13 @@
 import SwiftUI
-import AuthenticationServices
 
+/// Email + password sign-in, links to Register, optional Google / phone, forgot password.
 struct LoginView: View {
+
     @EnvironmentObject var authViewModel: AuthViewModel
 
     @State private var email = ""
     @State private var password = ""
     @State private var showPhoneSection = false
-    @State private var showForgotPasswordHint = false
     @State private var localMessage: String?
     @State private var localMessageIsError = true
 
@@ -75,32 +75,30 @@ struct LoginView: View {
                 }
                 .padding(.vertical, 2)
 
-                Button {
-                    Task { await handleCreateAccount() }
+                NavigationLink {
+                    RegisterView()
                 } label: {
-                    Text("Create Account")
+                    Text("Create account")
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(.primary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .overlay(RoundedRectangle(cornerRadius: 0).stroke(Color.primary.opacity(0.7), lineWidth: 2))
                 }
-                .disabled(authViewModel.isLoading)
+                .buttonStyle(.plain)
 
                 Button("Forgot password?") {
-                    showForgotPasswordHint.toggle()
+                    Task { await handleForgotPassword() }
                 }
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(.secondary)
                 .underline()
                 .padding(.top, 8)
 
-                if showForgotPasswordHint {
-                    Text("Reset can be added next using `sendPasswordReset(withEmail:)` from Firebase Auth.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                Text("Uses the email above. If the account exists, Firebase will email a reset link.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 providerButtons
 
@@ -108,17 +106,7 @@ struct LoginView: View {
                     phoneSection
                 }
 
-                if let message = localMessage, !message.isEmpty {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(localMessageIsError ? .red : .green)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else if let error = authViewModel.errorMessage, !error.isEmpty {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+                messageBlock
 
                 if authViewModel.isLoading {
                     ProgressView()
@@ -127,12 +115,18 @@ struct LoginView: View {
 
                 Spacer(minLength: 36)
 
-                HStack(spacing: 6) {
-                    Text("Don't have an account?")
-                        .foregroundStyle(.secondary)
-                    Text("Sign Up")
-                        .fontWeight(.bold)
+                NavigationLink {
+                    RegisterView()
+                } label: {
+                    HStack(spacing: 6) {
+                        Text("Don't have an account?")
+                            .foregroundStyle(.secondary)
+                        Text("Sign Up")
+                            .fontWeight(.bold)
+                            .foregroundStyle(.primary)
+                    }
                 }
+                .buttonStyle(.plain)
                 .font(.system(size: 18))
                 .padding(.bottom, 12)
             }
@@ -142,6 +136,26 @@ struct LoginView: View {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }
         .background(Color(.systemGray6))
+    }
+
+    @ViewBuilder
+    private var messageBlock: some View {
+        if let notice = authViewModel.transientNotice, !notice.isEmpty {
+            Text(notice)
+                .font(.footnote)
+                .foregroundStyle(.green)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let message = localMessage, !message.isEmpty {
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(localMessageIsError ? .red : .green)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else if let error = authViewModel.errorMessage, !error.isEmpty {
+            Text(error)
+                .font(.footnote)
+                .foregroundStyle(.red)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var providerButtons: some View {
@@ -154,16 +168,6 @@ struct LoginView: View {
                     .frame(height: 48)
             }
             .buttonStyle(.bordered)
-
-            SignInWithAppleButton { request in
-                authViewModel.prepareAppleSignInRequest(request)
-            } onCompletion: { result in
-                Task {
-                    await authViewModel.handleAppleSignIn(result: result)
-                }
-            }
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: 48)
 
             Button {
                 withAnimation {
@@ -225,34 +229,31 @@ struct LoginView: View {
         }
 
         await authViewModel.signInWithEmail(email: trimmedEmail, password: password)
+        // On success, `AuthGateView` shows `ContentView` when `isSignedIn` becomes true.
     }
 
-    private func handleCreateAccount() async {
+    private func handleForgotPassword() async {
         localMessage = nil
         authViewModel.clearError()
 
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedEmail.isEmpty else {
             localMessageIsError = true
-            localMessage = "Please enter an email for your new account."
-            return
-        }
-        guard password.count >= 6 else {
-            localMessageIsError = true
-            localMessage = "Password must be at least 6 characters."
+            localMessage = "Enter your email above, then tap Forgot password."
             return
         }
 
-        await authViewModel.createAccountWithEmail(email: trimmedEmail, password: password)
-
+        await authViewModel.sendPasswordReset(email: trimmedEmail)
         if authViewModel.errorMessage == nil {
             localMessageIsError = false
-            localMessage = "Account created. You are now signed in."
+            localMessage = nil
         }
     }
 }
 
 #Preview {
-    LoginView()
-        .environmentObject(AuthViewModel())
+    NavigationStack {
+        LoginView()
+            .environmentObject(AuthViewModel())
+    }
 }

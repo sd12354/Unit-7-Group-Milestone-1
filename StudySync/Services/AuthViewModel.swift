@@ -1,8 +1,7 @@
 import Foundation
 import FirebaseAuth
+import FirebaseFirestore
 import Combine
-import AuthenticationServices
-import CryptoKit
 #if canImport(FirebaseCore)
 import FirebaseCore
 #endif
@@ -21,13 +20,16 @@ class AuthViewModel: ObservableObject {
     @Published var isSignedIn: Bool = false
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    /// Short success line (e.g. password reset email sent). Cleared with `clearError()`.
+    @Published var transientNotice: String?
 
     @Published var phoneNumber: String = ""
     @Published var phoneVerificationCode: String = ""
     @Published var isPhoneCodeSent: Bool = false
 
-    private(set) var currentNonce: String?
     private var verificationID: String?
+    /// Retained while Firebase Phone Auth presents reCAPTCHA UI.
+    private var phoneAuthUIHelper: PhoneAuthUIHelper?
 
     private var authStateHandle: AuthStateDidChangeListenerHandle?
 
@@ -52,6 +54,7 @@ class AuthViewModel: ObservableObject {
 
     func clearError() {
         errorMessage = nil
+        transientNotice = nil
     }
 
     func signInWithEmail(email: String, password: String) async {
@@ -62,34 +65,79 @@ class AuthViewModel: ObservableObject {
             _ = try await Auth.auth().signIn(withEmail: email, password: password)
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthEmailErrorMapper.message(for: error)
         }
     }
 
-    func createAccountWithEmail(email: String, password: String) async {
+    /// Register with display name, then update Auth profile and create `users/{uid}` in Firestore.
+    func registerWithEmail(displayName: String, email: String, password: String) async {
         await setLoading(true)
         defer { Task { @MainActor in self.isLoading = false } }
 
         do {
-            _ = try await Auth.auth().createUser(withEmail: email, password: password)
+            let result = try await Auth.auth().createUser(withEmail: email, password: password)
+            let change = result.user.createProfileChangeRequest()
+            change.displayName = displayName
+            try await change.commitChanges()
+
+            let uid = result.user.uid
+            try await Firestore.firestore().collection("users").document(uid).setData(
+                [
+                    "displayName": displayName,
+                    "bio": "",
+                ],
+                merge: true
+            )
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthEmailErrorMapper.message(for: error)
+        }
+    }
+
+    func sendPasswordReset(email: String) async {
+        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = "Enter your email above, then tap Forgot password again."
+            return
+        }
+
+        await setLoading(true)
+        defer { Task { @MainActor in self.isLoading = false } }
+
+        transientNotice = nil
+        errorMessage = nil
+
+        do {
+            try await Auth.auth().sendPasswordReset(withEmail: trimmed)
+            transientNotice = "Check your email for a link to reset your password."
+        } catch {
+            errorMessage = AuthEmailErrorMapper.message(for: error)
         }
     }
 
     func sendPhoneVerificationCode() async {
+        let phone = Self.normalizedE164Phone(phoneNumber)
+        guard phone.count >= 8 else {
+            errorMessage = "Enter a full number with country code, e.g. +15555550100."
+            return
+        }
+
         await setLoading(true)
         defer { Task { @MainActor in self.isLoading = false } }
 
+        let helper = PhoneAuthUIHelper(presenter: topViewController())
+        phoneAuthUIHelper = helper
+
         do {
-            let id = try await PhoneAuthProvider.provider().verifyPhoneNumber(phoneNumber, uiDelegate: nil)
+            let id = try await PhoneAuthProvider.provider().verifyPhoneNumber(phone, uiDelegate: helper)
             verificationID = id
             isPhoneCodeSent = true
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthEmailErrorMapper.message(for: error)
         }
+
+        phoneAuthUIHelper = nil
     }
 
     func verifyPhoneCode() async {
@@ -110,7 +158,7 @@ class AuthViewModel: ObservableObject {
             _ = try await Auth.auth().signIn(with: credential)
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthEmailErrorMapper.message(for: error)
         }
     }
 
@@ -120,8 +168,11 @@ class AuthViewModel: ObservableObject {
             errorMessage = "Could not find a presentation context for Google sign-in."
             return
         }
-        guard let clientID = FirebaseApp.app()?.options.clientID else {
-            errorMessage = "Missing Firebase client ID. Check GoogleService-Info.plist."
+        guard let clientID = FirebaseApp.app()?.options.clientID, !clientID.isEmpty else {
+            errorMessage = """
+            Missing CLIENT_ID in GoogleService-Info.plist. In Firebase Console → Project settings → \
+            Your apps → download the iOS config again. The plist must include CLIENT_ID and REVERSED_CLIENT_ID.
+            """
             return
         }
 
@@ -138,14 +189,15 @@ class AuthViewModel: ObservableObject {
                 return
             }
 
+            let accessToken = result.user.accessToken.tokenString
             let credential = GoogleAuthProvider.credential(
                 withIDToken: idToken,
-                accessToken: result.user.accessToken.tokenString
+                accessToken: accessToken
             )
             _ = try await Auth.auth().signIn(with: credential)
             errorMessage = nil
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = AuthEmailErrorMapper.message(for: error)
         }
     }
     #else
@@ -154,110 +206,53 @@ class AuthViewModel: ObservableObject {
     }
     #endif
 
-    func prepareAppleSignInRequest(_ request: ASAuthorizationAppleIDRequest) {
-        let nonce = randomNonceString()
-        currentNonce = nonce
-        request.requestedScopes = [.fullName, .email]
-        request.nonce = sha256(nonce)
-    }
-
-    func handleAppleSignIn(result: Result<ASAuthorization, Error>) async {
-        await setLoading(true)
-        defer { Task { @MainActor in self.isLoading = false } }
-
-        do {
-            switch result {
-            case .success(let authResults):
-                guard let appleIDCredential = authResults.credential as? ASAuthorizationAppleIDCredential else {
-                    errorMessage = "Invalid Apple ID credential."
-                    return
-                }
-                guard let nonce = currentNonce else {
-                    errorMessage = "Invalid sign-in state. Please try again."
-                    return
-                }
-                guard let appleIDToken = appleIDCredential.identityToken else {
-                    errorMessage = "Unable to fetch Apple identity token."
-                    return
-                }
-                guard let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                    errorMessage = "Unable to decode Apple identity token."
-                    return
-                }
-
-                let credential = OAuthProvider.credential(
-                    withProviderID: "apple.com",
-                    idToken: idTokenString,
-                    rawNonce: nonce
-                )
-                _ = try await Auth.auth().signIn(with: credential)
-                errorMessage = nil
-            case .failure(let error):
-                errorMessage = error.localizedDescription
-            }
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
     private func setLoading(_ value: Bool) async {
         await MainActor.run {
             self.isLoading = value
         }
     }
 
-    #if canImport(GoogleSignIn)
+    #if canImport(UIKit)
+    private func activeWindowScene() -> UIWindowScene? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        return scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+    }
+
     private func topViewController(
-        _ root: UIViewController? = UIApplication.shared.connectedScenes
-            .compactMap { ($0 as? UIWindowScene)?.keyWindow }
-            .first?.rootViewController
+        _ root: UIViewController? = nil
     ) -> UIViewController? {
-        if let nav = root as? UINavigationController {
+        let scene = activeWindowScene()
+        let resolvedRoot = root ?? scene?.windows.first(where: \.isKeyWindow)?.rootViewController
+            ?? scene?.windows.first?.rootViewController
+
+        if let nav = resolvedRoot as? UINavigationController {
             return topViewController(nav.visibleViewController)
         }
-        if let tab = root as? UITabBarController, let selected = tab.selectedViewController {
+        if let tab = resolvedRoot as? UITabBarController, let selected = tab.selectedViewController {
             return topViewController(selected)
         }
-        if let presented = root?.presentedViewController {
+        if let presented = resolvedRoot?.presentedViewController {
             return topViewController(presented)
         }
-        return root
+        return resolvedRoot
     }
     #endif
 
-    private func sha256(_ input: String) -> String {
-        let inputData = Data(input.utf8)
-        let hashedData = SHA256.hash(data: inputData)
-        return hashedData.compactMap { String(format: "%02x", $0) }.joined()
-    }
-
-    private func randomNonceString(length: Int = 32) -> String {
-        precondition(length > 0)
-        let charset: [Character] = Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
-        var result = ""
-        var remainingLength = length
-
-        while remainingLength > 0 {
-            let randoms: [UInt8] = (0..<16).map { _ in
-                var random: UInt8 = 0
-                let status = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
-                if status != errSecSuccess {
-                    fatalError("Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(status)")
-                }
-                return random
-            }
-
-            randoms.forEach { random in
-                if remainingLength == 0 {
-                    return
-                }
-                if random < charset.count {
-                    result.append(charset[Int(random)])
-                    remainingLength -= 1
-                }
-            }
+    private static func normalizedE164Phone(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix("+") {
+            return "+" + trimmed.dropFirst().filter(\.isNumber)
         }
-
-        return result
+        let digits = trimmed.filter(\.isNumber)
+        if digits.count == 10 {
+            return "+1" + digits
+        }
+        if digits.count == 11, digits.hasPrefix("1") {
+            return "+" + digits
+        }
+        if !digits.isEmpty {
+            return "+" + digits
+        }
+        return ""
     }
 }

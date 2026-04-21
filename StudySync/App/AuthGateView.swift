@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Auth gate — shows LoginView when signed out, ContentView when signed in.
+/// Auth gate — shows Login / Register when signed out, ContentView when signed in.
 struct AuthGateView: View {
 
     @StateObject private var authViewModel = AuthViewModel()
@@ -11,8 +11,10 @@ struct AuthGateView: View {
                 ContentView()
                     .environmentObject(authViewModel)
             } else {
-                LoginView()
-                    .environmentObject(authViewModel)
+                NavigationStack {
+                    LoginView()
+                        .environmentObject(authViewModel)
+                }
             }
         }
     }
