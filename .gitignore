@@ -1,5 +1,11 @@
 # Firebase credentials — never commit
 GoogleService-Info.plist
+**/GoogleService-Info.plist
+google-services.json
+**/google-services.json
+
+# Swift Package Manager (local clone path; do not commit)
+.spm/
 
 # Xcode
 *.xcuserstate
