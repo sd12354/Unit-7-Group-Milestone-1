@@ -1,7 +1,6 @@
 import Foundation
 import FirebaseAuth
 import FirebaseFirestore
-import FirebaseFirestoreSwift
 
 /// Firestore read/write for study sessions (`sessions` collection).
 /// Milestone 2 — Issues 5 & 8.

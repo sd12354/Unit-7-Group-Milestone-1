@@ -1,6 +1,5 @@
 import Foundation
 import FirebaseFirestore
-import FirebaseFirestoreSwift
 
 /// Firestore-backed model for a study session.
 /// Maps to the `sessions` collection (Milestone 2 — Issue 5).
