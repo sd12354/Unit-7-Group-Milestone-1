@@ -70,6 +70,40 @@ enum SessionRepository {
         }
     }
 
+    /// Upcoming sessions where the current user is the host.
+    static func getHostingSessions() async throws -> [StudySession] {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            throw SessionError.notSignedIn
+        }
+
+        let snapshot = try await sessions
+            .whereField("hostId", isEqualTo: uid)
+            .whereField("startTime", isGreaterThan: Timestamp(date: Date()))
+            .order(by: "startTime", descending: false)
+            .getDocuments()
+
+        return try snapshot.documents.map { doc in
+            try doc.data(as: StudySession.self)
+        }
+    }
+
+    /// Upcoming sessions where the current user appears in `attendeeIds`.
+    static func getJoinedSessions() async throws -> [StudySession] {
+        guard let uid = Auth.auth().currentUser?.uid else {
+            throw SessionError.notSignedIn
+        }
+
+        let snapshot = try await sessions
+            .whereField("attendeeIds", arrayContains: uid)
+            .whereField("startTime", isGreaterThan: Timestamp(date: Date()))
+            .order(by: "startTime", descending: false)
+            .getDocuments()
+
+        return try snapshot.documents.map { doc in
+            try doc.data(as: StudySession.self)
+        }
+    }
+
     static func getSessionById(_ id: String) async throws -> StudySession {
         let doc = try await sessions.document(id).getDocument()
         guard doc.exists else { throw SessionError.sessionNotFound }
