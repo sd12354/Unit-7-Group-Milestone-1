@@ -2,12 +2,12 @@ import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
 
-/// Profile screen — account info from Firebase Auth plus `users/{uid}` from Firestore when present.
 struct ProfileView: View {
 
     @EnvironmentObject private var authViewModel: AuthViewModel
     @State private var userProfile: UserProfile?
     @State private var profileLoadError: String?
+    @State private var isEditingProfile = false
 
     private var user: User? { authViewModel.currentUser }
 
@@ -28,10 +28,7 @@ struct ProfileView: View {
 
                     Group {
                         sectionTitle("Profile")
-                        infoRow(
-                            title: "Display name",
-                            value: displayNameText
-                        )
+                        infoRow(title: "Display name", value: displayNameText)
                         infoRow(title: "Bio", value: bioLine)
                     }
 
@@ -58,6 +55,16 @@ struct ProfileView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Profile")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Edit") {
+                        isEditingProfile = true
+                    }
+                }
+            }
+            .sheet(isPresented: $isEditingProfile) {
+                EditProfileSheet(userProfile: $userProfile, user: user)
+            }
             .task(id: user?.uid) {
                 await loadUserProfile()
             }
@@ -111,12 +118,8 @@ struct ProfileView: View {
     }
 
     private var displayNameText: String {
-        if let name = userProfile?.displayName, !name.isEmpty {
-            return name
-        }
-        if let name = user?.displayName, !name.isEmpty {
-            return name
-        }
+        if let name = userProfile?.displayName, !name.isEmpty { return name }
+        if let name = user?.displayName, !name.isEmpty { return name }
         return "Not set"
     }
 
@@ -162,6 +165,92 @@ struct ProfileView: View {
             }
         } catch {
             profileLoadError = error.localizedDescription
+        }
+    }
+}
+
+// MARK: - Edit Sheet
+
+private struct EditProfileSheet: View {
+
+    @Binding var userProfile: UserProfile?
+    let user: User?
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var displayName = ""
+    @State private var bio = ""
+    @State private var isSaving = false
+    @State private var saveError: String?
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Display Name") {
+                    TextField("Your name", text: $displayName)
+                        .autocorrectionDisabled()
+                }
+                Section("Bio") {
+                    TextEditor(text: $bio)
+                        .frame(minHeight: 100)
+                }
+                if let saveError {
+                    Section {
+                        Text(saveError)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                        .disabled(isSaving)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSaving {
+                        ProgressView()
+                    } else {
+                        Button("Save") {
+                            Task { await saveProfile() }
+                        }
+                        .disabled(displayName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    }
+                }
+            }
+            .onAppear {
+                displayName = userProfile?.displayName ?? user?.displayName ?? ""
+                bio = userProfile?.bio ?? ""
+            }
+        }
+    }
+
+    private func saveProfile() async {
+        guard let uid = user?.uid else { return }
+        isSaving = true
+        saveError = nil
+
+        do {
+            try await Firestore.firestore()
+                .collection("users")
+                .document(uid)
+                .setData(["displayName": displayName, "bio": bio], merge: true)
+
+            let changeRequest = Auth.auth().currentUser?.createProfileChangeRequest()
+            changeRequest?.displayName = displayName
+            try await changeRequest?.commitChanges()
+
+            if userProfile != nil {
+                userProfile?.displayName = displayName
+                userProfile?.bio = bio
+            } else {
+                userProfile = UserProfile(displayName: displayName, bio: bio, photoURL: nil)
+            }
+            dismiss()
+        } catch {
+            saveError = error.localizedDescription
+            isSaving = false
         }
     }
 }
