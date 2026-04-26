@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseFirestore
+import MapKit
 
 /// Full session info, attendee list, join / leave (Milestone 2 — Issue 8).
 struct SessionDetailView: View {
@@ -58,6 +59,16 @@ struct SessionDetailView: View {
                 Text(session.description.isEmpty ? "No description." : session.description)
                     .font(.body)
                     .foregroundStyle(session.description.isEmpty ? .secondary : .primary)
+            }
+
+            if !session.locationText.trimmingCharacters(in: .whitespaces).isEmpty {
+                Section {
+                    Button {
+                        openInMaps(address: session.locationText)
+                    } label: {
+                        Label("Open in Maps", systemImage: "map")
+                    }
+                }
             }
 
             Section("Attendees (\(session.attendeeCount))") {
@@ -168,6 +179,13 @@ struct SessionDetailView: View {
             try await SessionRepository.leaveSession(sessionId: sessionId)
         } catch {
             actionError = error.localizedDescription
+        }
+    }
+
+    private func openInMaps(address: String) {
+        let encoded = address.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        if let url = URL(string: "maps://?q=\(encoded)") {
+            UIApplication.shared.open(url)
         }
     }
 }
