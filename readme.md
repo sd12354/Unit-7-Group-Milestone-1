@@ -28,13 +28,13 @@
 
 **Required Must-have Stories**
 
-- User can register an account and log in.
-- User can create a study session with title, subject/tag, date/time, location (text), optional max attendees, and description.
-- User can browse a list of upcoming study sessions (chronological or by date).
-- User can open a session to see details and a list of attendees.
-- User can join a session if capacity allows and leave a session they joined.
-- User can view and edit their own profile (display name, short bio, optional photo).
-- User sees their own sessions (hosted and joined) in one place.
+- User can register an account and log in. ✅
+- User can create a study session with title, subject/tag, date/time, location (text), optional max attendees, and description. ✅
+- User can browse a list of upcoming study sessions (chronological or by date). ✅
+- User can open a session to see details and a list of attendees. ✅
+- User can join a session if capacity allows and leave a session they joined. ✅
+- User can view and edit their own profile (display name, short bio, optional photo). ✅
+- User sees their own sessions (hosted and joined) in one place. ✅
 
 **Optional Nice-to-have Stories**
 
