@@ -16,7 +16,7 @@ struct SessionDetailView: View {
     @State private var loadError: String?
     @State private var actionError: String?
     @State private var joinLeaveInFlight = false
-    @State private var showCancelPrompt = false
+    @State private var showCancelSheet = false
     @State private var cancelReason = ""
     @State private var showEditSheet = false
     @State private var userDisplayNames: [String: String] = [:]
@@ -63,19 +63,74 @@ struct SessionDetailView: View {
         } message: {
             Text(actionError ?? "")
         }
-        .alert("Cancel Session", isPresented: $showCancelPrompt) {
-            TextField("Reason (optional)", text: $cancelReason)
-            Button("Keep Session", role: .cancel) {}
-            Button("Cancel Session", role: .destructive) {
-                Task { await performCancel() }
-            }
-        } message: {
-            Text("Attendees will be notified that this session was cancelled.")
-        }
         .sheet(isPresented: $showEditSheet) {
             if let session {
                 CreateView(editingSession: session)
             }
+        }
+        .sheet(isPresented: $showCancelSheet) {
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 18) {
+                    Text("Cancel this session?")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundStyle(AppTheme.textPrimary)
+
+                    Text("Attendees will be notified. You can add an optional reason below.")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary)
+
+                    TextField(
+                        "Reason (optional)",
+                        text: $cancelReason,
+                        axis: .vertical
+                    )
+                    .lineLimit(2...4)
+                    .padding(12)
+                    .background(AppTheme.surface)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(AppTheme.primary.opacity(0.3), lineWidth: 1)
+                    )
+
+                    Button(role: .destructive) {
+                        Task { await performCancel() }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if joinLeaveInFlight {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Label("Cancel Session", systemImage: "xmark.octagon.fill")
+                                    .font(.system(size: 17, weight: .semibold))
+                            }
+                            Spacer()
+                        }
+                        .frame(height: 52)
+                        .background(AppTheme.error)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(joinLeaveInFlight)
+
+                    Spacer()
+                }
+                .padding(20)
+                .appBackground()
+                .navigationTitle("Cancel Session")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") {
+                            showCancelSheet = false
+                        }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
     }
 
@@ -154,17 +209,13 @@ struct SessionDetailView: View {
                 Text("You are hosting this session.")
                     .foregroundStyle(AppTheme.textSecondary)
                 if !session.isCancelled {
-                    Button(role: .destructive) {
-                        showCancelPrompt = true
+                    Button {
+                        showCancelSheet = true
                     } label: {
-                        if joinLeaveInFlight {
-                            ProgressView()
-                        } else {
-                            Label("Cancel Session", systemImage: "xmark.octagon")
-                        }
+                        Label("Cancel Session", systemImage: "xmark.octagon")
                     }
+                    .buttonStyle(.borderedProminent)
                     .tint(AppTheme.error)
-                    .appPressEffect()
                     .disabled(joinLeaveInFlight)
                 }
             }
@@ -302,6 +353,7 @@ struct SessionDetailView: View {
                 reason: cancelReason
             )
             cancelReason = ""
+            showCancelSheet = false
         } catch {
             actionError = error.localizedDescription
         }

@@ -86,7 +86,7 @@ struct MySessionsView: View {
                                 } label: {
                                     MySessionRowView(session: session, isHosting: selectedTab == "Hosting")
                                 }
-                                .buttonStyle(.plain)
+                                .buttonStyle(MySessionCardButtonStyle())
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
                             }
@@ -214,10 +214,10 @@ private struct MySessionRowView: View {
                 .fill(subjectAccent)
                 .frame(width: 4)
 
-            VStack(alignment: .leading, spacing: 15) {
+            VStack(alignment: .leading, spacing: 13) {
                 HStack(alignment: .top, spacing: 10) {
                     Text(session.title)
-                        .font(.system(size: 29, weight: .bold))
+                        .font(.system(size: 23, weight: .bold))
                         .lineLimit(2)
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer(minLength: 8)
@@ -240,43 +240,43 @@ private struct MySessionRowView: View {
                             .clipShape(Capsule())
                     }
                     Text(session.subjectTag)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(subjectAccent.opacity(0.95))
                         .padding(.horizontal, 10)
-                        .padding(.vertical, 5)
+                        .padding(.vertical, 4)
                         .background(subjectAccent.opacity(0.18))
                         .clipShape(Capsule())
                 }
 
                 HStack(spacing: 9) {
                     Image(systemName: "calendar.badge.clock")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(subjectAccent.opacity(0.95))
                     Text(session.startTime.formatted(date: .abbreviated, time: .omitted))
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(AppTheme.textSecondary)
                     Text("at")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(AppTheme.textSecondary.opacity(0.75))
                     Text(session.startTime.formatted(date: .omitted, time: .shortened))
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(AppTheme.textPrimary)
                 }
 
                 HStack(spacing: 9) {
                     Image(systemName: "mappin.circle.fill")
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 15, weight: .semibold))
                         .foregroundStyle(subjectAccent.opacity(0.9))
                     Text(session.locationText)
-                        .font(.system(size: 17, weight: .medium))
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundStyle(AppTheme.textSecondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
                     Spacer(minLength: 6)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(AppTheme.textSecondary.opacity(0.75))
-                        .padding(7)
+                        .padding(6)
                         .background(AppTheme.surface)
                         .clipShape(Circle())
                         .overlay(Circle().stroke(AppTheme.primary.opacity(0.2), lineWidth: 1))
@@ -285,10 +285,10 @@ private struct MySessionRowView: View {
 
                 HStack {
                     Text(attendeesText)
-                        .font(.system(size: 13, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(spotsBadgeForeground)
-                        .padding(.horizontal, 12)
-                        .frame(height: 30)
+                        .padding(.horizontal, 11)
+                        .frame(height: 28)
                         .background(spotsBadgeBackground)
                         .clipShape(Capsule())
                     Spacer()
@@ -303,8 +303,8 @@ private struct MySessionRowView: View {
                 .stroke(subjectAccent.opacity(0.18), lineWidth: 1)
         )
         .shadow(color: AppTheme.primary.opacity(0.14), radius: 12, y: 6)
-        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
         .listRowSeparator(.hidden)
     }
 
@@ -353,6 +353,15 @@ private struct MySessionRowView: View {
             }
         }
         return Color(hex: "1E40AF")
+    }
+}
+
+private struct MySessionCardButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.93 : 1)
+            .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
 }
 

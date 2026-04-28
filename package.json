@@ -1,0 +1,13 @@
+{
+  "name": "studysync-demo-tools",
+  "private": true,
+  "version": "1.0.0",
+  "description": "One-off scripts for seeding and clearing StudySync demo data.",
+  "scripts": {
+    "seed:demo": "node scripts/seed-demo-data.js",
+    "clear:demo": "node scripts/clear-demo-data.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

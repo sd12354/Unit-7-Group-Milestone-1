@@ -158,7 +158,8 @@ struct HomeView: View {
                             List(filteredSessions) { session in
                                 if let id = session.id {
                                     Button {
-                                        if session.hostId == authViewModel.currentUser?.uid {
+                                        let isPastSession = session.startTime < Date()
+                                        if session.hostId == authViewModel.currentUser?.uid && !isPastSession {
                                             editingSession = session
                                         } else {
                                             navigationPath.append(id)
@@ -169,7 +170,8 @@ struct HomeView: View {
                                             isOwnedByCurrentUser: session.hostId == authViewModel.currentUser?.uid,
                                             hostDisplayName: hostProfiles[session.hostId]?.displayName ?? "Host",
                                             hostPhotoURL: hostProfiles[session.hostId]?.photoURL,
-                                            isJoinedByCurrentUser: session.attendeeIds.contains(authViewModel.currentUser?.uid ?? "")
+                                            isJoinedByCurrentUser: session.attendeeIds.contains(authViewModel.currentUser?.uid ?? ""),
+                                            isPastSession: session.startTime < Date()
                                         )
                                     }
                                     .buttonStyle(SessionCardButtonStyle())
@@ -218,7 +220,7 @@ struct HomeView: View {
                 .appPressEffect()
                 .padding(.trailing, 18)
                 // Keep FAB above the custom tab bar capsule.
-                .padding(.bottom, 146)
+                .padding(.bottom, 126)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .foregroundStyle(AppTheme.textPrimary)
@@ -349,6 +351,7 @@ private struct SessionRowView: View {
     let hostDisplayName: String
     let hostPhotoURL: String?
     let isJoinedByCurrentUser: Bool
+    let isPastSession: Bool
 
     private static let rowDate: Date.FormatStyle =
         .dateTime
@@ -370,6 +373,15 @@ private struct SessionRowView: View {
                         .lineLimit(2)
                         .foregroundStyle(AppTheme.textPrimary)
                     Spacer(minLength: 8)
+                    if isPastSession {
+                        Text("Past")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Color(hex: "6B7280"))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(hex: "E5E7EB"))
+                            .clipShape(Capsule())
+                    }
                     Text(session.subjectTag)
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(subjectAccent.opacity(0.95))
@@ -441,6 +453,8 @@ private struct SessionRowView: View {
                 .stroke(subjectAccent.opacity(0.18), lineWidth: 1)
         )
         .shadow(color: AppTheme.primary.opacity(0.14), radius: 12, y: 6)
+        .opacity(isPastSession ? 0.78 : 1)
+        .saturation(isPastSession ? 0.72 : 1)
         .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
         .listRowSeparator(.hidden)

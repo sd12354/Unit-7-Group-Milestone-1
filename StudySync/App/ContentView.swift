@@ -71,6 +71,7 @@ struct ContentView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .appBackground()
     }
 }

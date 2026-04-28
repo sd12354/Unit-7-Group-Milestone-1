@@ -58,37 +58,39 @@ struct CreateView: View {
                     .scaledToFill()
                     .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 20) {
-                    labeled("Session Title", systemImage: "textformat") {
-                        TextField(
-                            "",
-                            text: $title,
-                            prompt: Text("e.g., Calculus Study Group")
-                                .foregroundStyle(AppTheme.textSecondary.opacity(0.82))
-                        )
-                            .focused($focusedField, equals: .title)
-                            .foregroundStyle(AppTheme.primary)
-                            .tint(AppTheme.primary)
-                            .padding(12)
-                            .background(AppTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(focusedField == .title ? AppTheme.accent : AppTheme.primary.opacity(0.5), lineWidth: focusedField == .title ? 2.5 : 1.5)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 20) {
+                            labeled("Session Title", systemImage: "textformat") {
+                            TextField(
+                                "",
+                                text: $title,
+                                prompt: Text("e.g., Calculus Study Group")
+                                    .foregroundStyle(AppTheme.textSecondary.opacity(0.82))
                             )
-                            .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
-                    }
+                                .focused($focusedField, equals: .title)
+                                .foregroundStyle(AppTheme.primary)
+                                .tint(AppTheme.primary)
+                                .padding(12)
+                                .background(AppTheme.surface)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(focusedField == .title ? AppTheme.accent : AppTheme.primary.opacity(0.5), lineWidth: focusedField == .title ? 2.5 : 1.5)
+                                )
+                                .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+                            }
+                            .id(Field.title)
 
-                    labeled("Subject / Tag", systemImage: "tag.fill") {
-                        subjectPicker
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                            .background(AppTheme.surface)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.primary.opacity(0.35), lineWidth: 1))
-                            .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
-                    }
+                            labeled("Subject / Tag", systemImage: "tag.fill") {
+                                subjectPicker
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
+                                    .background(AppTheme.surface)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.primary.opacity(0.35), lineWidth: 1))
+                                    .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
+                            }
 
                     HStack(alignment: .top, spacing: 12) {
                         labeled("Date", systemImage: "calendar") {
@@ -148,6 +150,7 @@ struct CreateView: View {
                                 locationSearch.update(query: newValue)
                             }
                     }
+                    .id(Field.location)
                     if focusedField == .location && !locationSearch.suggestions.isEmpty {
                         VStack(spacing: 0) {
                             ForEach(locationSearch.suggestions, id: \.self) { suggestion in
@@ -235,6 +238,7 @@ struct CreateView: View {
                             )
                             .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
                     }
+                    .id(Field.description)
 
                     Button(action: { Task { await saveSession() } }) {
                         HStack {
@@ -256,14 +260,21 @@ struct CreateView: View {
                         .background(isFormValid && !isSaving ? AppTheme.primary : Color(hex: "A8AFBF"))
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .appPressEffect()
+                            .disabled(isSaving || !isFormValid)
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 92)
+                        .padding(.bottom, focusedField == nil ? 120 : 260)
                     }
-                    .buttonStyle(.plain)
-                    .appPressEffect()
-                    .disabled(isSaving || !isFormValid)
+                    .onChange(of: focusedField) { _, field in
+                        guard let field else { return }
+                        withAnimation(.easeInOut(duration: 0.22)) {
+                            proxy.scrollTo(field, anchor: .center)
+                        }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 92)
-                    .padding(.bottom, 120)
                 }
             }
             .id(scrollResetToken)
@@ -275,6 +286,15 @@ struct CreateView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
             .navigationBarTransparentKeepsLayout()
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        dismissKeyboard()
+                    }
+                    .font(.system(size: 16, weight: .semibold))
+                }
+            }
             .animation(.easeInOut(duration: 0.2), value: locationSearch.suggestions)
             .navigationDestination(for: String.self) { sessionId in
                 SessionDetailView(sessionId: sessionId)
@@ -289,6 +309,9 @@ struct CreateView: View {
             }
             .onAppear {
                 scrollResetToken = UUID()
+            }
+            .onTapGesture {
+                dismissKeyboard()
             }
         }
     }
@@ -458,6 +481,13 @@ struct CreateView: View {
         maxAttendees = nil
         description = ""
         locationSearch.clear()
+    }
+
+    private func dismissKeyboard() {
+        focusedField = nil
+        #if canImport(UIKit)
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        #endif
     }
 }
 
