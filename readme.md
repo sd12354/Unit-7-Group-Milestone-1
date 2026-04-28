@@ -128,7 +128,8 @@ _Add link or embed GIF/video of tap-through prototype._
 ## Milestone #2
 ![My GIF](https://i.imgflip.com/aqblt0.gif)
 
-## Final Prototype
+## Demo Video
+https://youtu.be/mTpvb2VTFmg
 
 
 ## Schema
