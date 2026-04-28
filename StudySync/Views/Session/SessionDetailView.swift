@@ -3,6 +3,10 @@ import FirebaseAuth
 import FirebaseFirestore
 import MapKit
 
+extension Notification.Name {
+    static let sessionMembershipDidChange = Notification.Name("sessionMembershipDidChange")
+}
+
 /// Full session info, attendee list, join / leave (Milestone 2 — Issue 8).
 struct SessionDetailView: View {
 
@@ -15,6 +19,7 @@ struct SessionDetailView: View {
     @State private var showCancelPrompt = false
     @State private var cancelReason = ""
     @State private var showEditSheet = false
+    @State private var userDisplayNames: [String: String] = [:]
 
     @State private var listener: ListenerRegistration?
 
@@ -111,13 +116,13 @@ struct SessionDetailView: View {
                 }
             }
 
-            Section("Attendees (\(session.attendeeCount))") {
-                if session.attendeeIds.isEmpty {
+            Section("Attendees (\(attendeeList(for: session).count))") {
+                if attendeeList(for: session).isEmpty {
                     Text("No one has joined yet.")
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(session.attendeeIds, id: \.self) { uid in
-                        Text(attendeeLabel(uid: uid))
+                    ForEach(attendeeList(for: session), id: \.self) { uid in
+                        Text(attendeeLabel(uid: uid, hostId: session.hostId))
                             .font(.subheadline)
                             .lineLimit(1)
                     }
@@ -130,6 +135,11 @@ struct SessionDetailView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
+        // Keep content readable above the custom tab bar and remove the clipped bottom feel.
+        .safeAreaPadding(.bottom, 96)
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 12)
+        }
         .appBackground()
     }
 
@@ -198,15 +208,23 @@ struct SessionDetailView: View {
         }
     }
 
-    private func attendeeLabel(uid: String) -> String {
-        if uid == currentUid {
-            return "You (\(shortId(uid)))"
-        }
-        return "Member \(shortId(uid))"
+    private func attendeeLabel(uid: String, hostId: String) -> String {
+        let fallbackName = uid == currentUid ? "You" : "Member \(shortId(uid))"
+        let name = userDisplayNames[uid] ?? fallbackName
+        return uid == hostId ? "\(name) (Host)" : name
     }
 
     private func shortId(_ uid: String) -> String {
         String(uid.prefix(8))
+    }
+
+    private func attendeeList(for session: StudySession) -> [String] {
+        var list: [String] = []
+        if !session.hostId.isEmpty {
+            list.append(session.hostId)
+        }
+        list.append(contentsOf: session.attendeeIds.filter { $0 != session.hostId })
+        return list
     }
 
     private func fallback(_ text: String, empty replacement: String) -> String {
@@ -222,9 +240,27 @@ struct SessionDetailView: View {
                 case .success(let s):
                     self.session = s
                     self.loadError = nil
+                    await loadDisplayNames(for: s)
                 case .failure(let e):
                     self.loadError = e.localizedDescription
                 }
+            }
+        }
+    }
+
+    @MainActor
+    private func loadDisplayNames(for session: StudySession) async {
+        let ids = Set(attendeeList(for: session).filter { userDisplayNames[$0] == nil })
+        guard !ids.isEmpty else { return }
+
+        for uid in ids {
+            do {
+                let doc = try await Firestore.firestore().collection("users").document(uid).getDocument()
+                let displayName = (doc.data()?["displayName"] as? String)?
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                userDisplayNames[uid] = (displayName?.isEmpty == false) ? displayName! : "Member \(shortId(uid))"
+            } catch {
+                userDisplayNames[uid] = "Member \(shortId(uid))"
             }
         }
     }
@@ -239,6 +275,7 @@ struct SessionDetailView: View {
         defer { joinLeaveInFlight = false }
         do {
             try await SessionRepository.joinSession(sessionId: sessionId)
+            NotificationCenter.default.post(name: .sessionMembershipDidChange, object: nil)
         } catch {
             actionError = error.localizedDescription
         }
@@ -249,6 +286,7 @@ struct SessionDetailView: View {
         defer { joinLeaveInFlight = false }
         do {
             try await SessionRepository.leaveSession(sessionId: sessionId)
+            NotificationCenter.default.post(name: .sessionMembershipDidChange, object: nil)
         } catch {
             actionError = error.localizedDescription
         }

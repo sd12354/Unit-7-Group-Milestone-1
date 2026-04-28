@@ -21,8 +21,17 @@ private enum AppTab: Int, CaseIterable, Hashable {
         switch self {
         case .home: return "house.fill"
         case .create: return "plus.circle.fill"
-        case .sessions: return "calendar"
+        case .sessions: return "calendar.circle.fill"
         case .profile: return "person.fill"
+        }
+    }
+
+    var inactiveSystemImage: String {
+        switch self {
+        case .home: return "house"
+        case .create: return "plus.circle"
+        case .sessions: return "calendar.circle"
+        case .profile: return "person"
         }
     }
 }
@@ -71,7 +80,8 @@ struct ContentView: View {
 private struct FloatingTabBar: View {
     @Binding var selection: AppTab
 
-    private let rowHeight: CGFloat = 52
+    private let rowHeight: CGFloat = 54
+    private let inactiveTint = Color(hex: "8C95A8")
 
     var body: some View {
         HStack(spacing: 0) {
@@ -82,37 +92,46 @@ private struct FloatingTabBar: View {
                         selection = tab
                     }
                 } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.systemImage)
-                            .font(.system(size: 20, weight: isSelected ? .semibold : .regular))
-                            .symbolRenderingMode(.hierarchical)
+                    VStack(spacing: 4) {
+                        ZStack {
+                            if isSelected {
+                                RoundedRectangle(cornerRadius: 11, style: .continuous)
+                                    .fill(AppTheme.primary)
+                                    .frame(width: 30, height: 30)
+                            }
+                            Image(systemName: isSelected ? tab.systemImage : tab.inactiveSystemImage)
+                                .font(.system(size: 19, weight: isSelected ? .semibold : .regular))
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(isSelected ? AppTheme.surface : inactiveTint)
+                        }
+                        .frame(height: 30)
                         Text(tab.title)
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
                             .multilineTextAlignment(.center)
-                            .lineLimit(2)
-                            .minimumScaleFactor(0.78)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.86)
                             .fixedSize(horizontal: false, vertical: true)
+                            .foregroundStyle(isSelected ? AppTheme.primary : inactiveTint)
                     }
                     .frame(maxWidth: .infinity, minHeight: rowHeight, maxHeight: rowHeight)
-                    .background {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                .fill(AppTheme.primary.opacity(0.22))
-                                .padding(.horizontal, 2)
-                                .padding(.vertical, 1)
-                        }
-                    }
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(isSelected ? AppTheme.primary : AppTheme.textSecondary)
             }
         }
         .frame(height: rowHeight)
-        .padding(5)
-        .background(AppTheme.surface.opacity(0.98))
+        .padding(.horizontal, 5)
+        .padding(.top, 10)
+        .padding(.bottom, 4)
+        .background(AppTheme.surface)
+        .overlay(alignment: .top) {
+            RoundedRectangle(cornerRadius: 1)
+                .fill(Color(hex: "DDE3EE"))
+                .frame(height: 1)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.1), radius: 10, y: 3)
+        .shadow(color: .black.opacity(0.08), radius: 14, x: 0, y: -2)
+        .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: 4)
         .padding(.horizontal, 18)
         .padding(.top, 6)
         .padding(.bottom, 0)

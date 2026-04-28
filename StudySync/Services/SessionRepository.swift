@@ -8,10 +8,6 @@ enum SessionRepository {
 
     private static var db: Firestore { Firestore.firestore() }
     private static var sessions: CollectionReference { db.collection("sessions") }
-    struct SessionCancellationNotice: Identifiable {
-        let id: String
-        let message: String
-    }
 
     enum SessionError: LocalizedError {
         case notSignedIn
@@ -47,7 +43,6 @@ enum SessionRepository {
         }
 
         let session = StudySession(
-            id: nil,
             title: title,
             subjectTag: subjectTag,
             startTime: dateTime,
@@ -56,7 +51,7 @@ enum SessionRepository {
             description: description,
             maxAttendees: capacity,
             hostId: uid,
-            attendeeIds: []
+            attendeeIds: [uid]
         )
 
         let ref = sessions.document()
@@ -64,10 +59,9 @@ enum SessionRepository {
         return ref.documentID
     }
 
-    /// Upcoming sessions with `startTime` after now, oldest first.
+    /// All sessions, oldest first (Home filters decide upcoming/past views).
     static func getSessions() async throws -> [StudySession] {
         let snapshot = try await sessions
-            .whereField("startTime", isGreaterThan: Timestamp(date: Date()))
             .order(by: "startTime", descending: false)
             .getDocuments()
 
@@ -162,11 +156,12 @@ enum SessionRepository {
                     return nil
                 }
 
-                let session: StudySession
-                do {
-                    session = try snapshot.data(as: StudySession.self)
-                } catch {
-                    errorPointer?.pointee = error as NSError
+                guard let session = sessionFromSnapshot(snapshot) else {
+                    errorPointer?.pointee = NSError(
+                        domain: "StudySync",
+                        code: 422,
+                        userInfo: [NSLocalizedDescriptionKey: "Session data is malformed."]
+                    )
                     return nil
                 }
 
@@ -229,14 +224,15 @@ enum SessionRepository {
         description: String
     ) async throws {
         let ref = sessions.document(sessionId)
-        try await ref.updateData([
+        let payload: [String: Any] = [
             "title": title,
             "subjectTag": subjectTag,
             "startTime": Timestamp(date: dateTime),
             "locationText": location,
-            "maxAttendees": capacity as Any,
+            "maxAttendees": capacity as Any? ?? NSNull(),
             "description": description
-        ])
+        ]
+        try await ref.updateData(payload)
     }
 
     static func cancelSession(
@@ -282,48 +278,38 @@ enum SessionRepository {
                     "read": false
                 ], forDocument: noticeRef)
             }
-            try await batch.commit()
+            do {
+                try await batch.commit()
+            } catch {
+                // Non-blocking: session cancellation should succeed even if notification writes are not permitted.
+            }
         }
     }
 
     private static func sessionFromDocument(_ doc: QueryDocumentSnapshot) -> StudySession? {
-        if let decoded = try? doc.data(as: StudySession.self) {
-            return decoded
-        }
-
         let data = doc.data()
-        guard let hostId = data["hostId"] as? String else {
-            return nil
-        }
+        guard let hostId = data["hostId"] as? String else { return nil }
+
         let title = (data["title"] as? String) ?? "Untitled session"
         let subjectTag = (data["subjectTag"] as? String) ?? "General"
         let locationText = (data["locationText"] as? String) ?? "Location not provided"
         let description = (data["description"] as? String) ?? ""
-        let maxAttendees = data["maxAttendees"] as? Int
         let attendeeIds = (data["attendeeIds"] as? [String]) ?? []
         let cancelled = data["cancelled"] as? Bool
         let cancellationReason = data["cancellationReason"] as? String
 
-        let startTime: Date
-        if let timestamp = data["startTime"] as? Timestamp {
-            startTime = timestamp.dateValue()
+        let maxAttendees: Int?
+        if let intValue = data["maxAttendees"] as? Int {
+            maxAttendees = intValue
+        } else if let doubleValue = data["maxAttendees"] as? Double {
+            maxAttendees = Int(doubleValue)
         } else {
-            startTime = Date.distantFuture
+            maxAttendees = nil
         }
 
-        let endTime: Date?
-        if let timestamp = data["endTime"] as? Timestamp {
-            endTime = timestamp.dateValue()
-        } else {
-            endTime = nil
-        }
-
-        let cancelledAt: Date?
-        if let timestamp = data["cancelledAt"] as? Timestamp {
-            cancelledAt = timestamp.dateValue()
-        } else {
-            cancelledAt = nil
-        }
+        let startTime = (data["startTime"] as? Timestamp)?.dateValue() ?? Date.distantFuture
+        let endTime = (data["endTime"] as? Timestamp)?.dateValue()
+        let cancelledAt = (data["cancelledAt"] as? Timestamp)?.dateValue()
 
         return StudySession(
             id: doc.documentID,
@@ -343,9 +329,6 @@ enum SessionRepository {
     }
 
     private static func sessionFromSnapshot(_ snapshot: DocumentSnapshot) -> StudySession? {
-        if let decoded = try? snapshot.data(as: StudySession.self) {
-            return decoded
-        }
         guard let data = snapshot.data() else { return nil }
         guard let hostId = data["hostId"] as? String else { return nil }
 
@@ -353,10 +336,18 @@ enum SessionRepository {
         let subjectTag = (data["subjectTag"] as? String) ?? "General"
         let locationText = (data["locationText"] as? String) ?? "Location not provided"
         let description = (data["description"] as? String) ?? ""
-        let maxAttendees = data["maxAttendees"] as? Int
         let attendeeIds = (data["attendeeIds"] as? [String]) ?? []
         let cancelled = data["cancelled"] as? Bool
         let cancellationReason = data["cancellationReason"] as? String
+
+        let maxAttendees: Int?
+        if let intValue = data["maxAttendees"] as? Int {
+            maxAttendees = intValue
+        } else if let doubleValue = data["maxAttendees"] as? Double {
+            maxAttendees = Int(doubleValue)
+        } else {
+            maxAttendees = nil
+        }
 
         let startTime = (data["startTime"] as? Timestamp)?.dateValue() ?? Date.distantFuture
         let endTime = (data["endTime"] as? Timestamp)?.dateValue()
@@ -379,35 +370,4 @@ enum SessionRepository {
         )
     }
 
-    static func consumeCancellationNotices() async throws -> [SessionCancellationNotice] {
-        guard let uid = Auth.auth().currentUser?.uid else {
-            return []
-        }
-        let noticesRef = db.collection("users").document(uid).collection("notifications")
-        let snapshot = try await noticesRef
-            .whereField("type", isEqualTo: "session_cancelled")
-            .whereField("read", isEqualTo: false)
-            .getDocuments()
-
-        if snapshot.documents.isEmpty {
-            return []
-        }
-
-        let notices: [SessionCancellationNotice] = snapshot.documents.map { doc in
-            let data = doc.data()
-            let title = (data["title"] as? String) ?? "A session"
-            let reason = ((data["reason"] as? String) ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            let message = reason.isEmpty
-                ? "\(title) was cancelled by the host."
-                : "\(title) was cancelled: \(reason)"
-            return SessionCancellationNotice(id: doc.documentID, message: message)
-        }
-
-        let batch = db.batch()
-        for doc in snapshot.documents {
-            batch.updateData(["read": true], forDocument: doc.reference)
-        }
-        try await batch.commit()
-        return notices
-    }
 }

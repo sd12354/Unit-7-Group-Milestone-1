@@ -6,7 +6,7 @@ import Combine
 struct CreateView: View {
 
     @State private var title = ""
-    @State private var subjectTag = SubjectOption.defaults[0]
+    @State private var subjectTag = ""
     @State private var customSubject = ""
     @State private var useCustomSubject = false
     @State private var dateTime = Date().addingTimeInterval(3600)
@@ -22,7 +22,7 @@ struct CreateView: View {
     @FocusState private var focusedField: Field?
     @EnvironmentObject private var authViewModel: AuthViewModel
     @Environment(\.dismiss) private var dismiss
-    private let fieldTitleFont: Font = .system(size: 14, weight: .semibold)
+    private let fieldTitleFont: Font = .system(size: 14, weight: .medium)
     private let editingSessionId: String?
 
     private enum Field: Hashable {
@@ -34,7 +34,7 @@ struct CreateView: View {
 
     init(editingSession: StudySession? = nil) {
         _title = State(initialValue: editingSession?.title ?? "")
-        _subjectTag = State(initialValue: editingSession?.subjectTag ?? SubjectOption.defaults[0])
+        _subjectTag = State(initialValue: editingSession?.subjectTag ?? "")
         _customSubject = State(initialValue: "")
         _useCustomSubject = State(initialValue: editingSession.map { !SubjectOption.defaults.contains($0.subjectTag) } ?? false)
         _dateTime = State(initialValue: editingSession?.startTime ?? Date().addingTimeInterval(3600))
@@ -59,21 +59,14 @@ struct CreateView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                    Label {
-                        Text("Create a session with the key details—then your crew can plan ahead and show up ready to study.")
-                    } icon: {
-                        Image(systemName: "sparkles")
-                    }
-                    .font(.subheadline)
-                    .foregroundStyle(Color(white: 0.88))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 2)
-
+                    VStack(alignment: .leading, spacing: 20) {
                     labeled("Session Title", systemImage: "textformat") {
-                        TextField("e.g., Calculus Study Group", text: $title)
+                        TextField(
+                            "",
+                            text: $title,
+                            prompt: Text("e.g., Calculus Study Group")
+                                .foregroundStyle(AppTheme.textSecondary.opacity(0.82))
+                        )
                             .focused($focusedField, equals: .title)
                             .foregroundStyle(AppTheme.primary)
                             .tint(AppTheme.primary)
@@ -90,22 +83,23 @@ struct CreateView: View {
                     labeled("Subject / Tag", systemImage: "tag.fill") {
                         subjectPicker
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 8)
+                            .padding(.vertical, 10)
                             .background(AppTheme.surface)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.primary.opacity(0.35), lineWidth: 1))
                             .shadow(color: .black.opacity(0.08), radius: 4, y: 2)
                     }
 
-                    HStack(alignment: .top, spacing: 10) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            fieldTitleRow("Date", systemImage: "calendar")
+                    HStack(alignment: .top, spacing: 12) {
+                        labeled("Date", systemImage: "calendar") {
                             DatePicker("", selection: $dateTime, displayedComponents: .date)
                                 .labelsHidden()
                                 .datePickerStyle(.compact)
                                 .tint(AppTheme.primary)
+                                .foregroundStyle(AppTheme.primary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(8)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
                                 .background(AppTheme.surface)
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.primary.opacity(0.35), lineWidth: 1))
@@ -113,14 +107,15 @@ struct CreateView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                        VStack(alignment: .leading, spacing: 4) {
-                            fieldTitleRow("Time", systemImage: "clock.fill")
+                        labeled("Time", systemImage: "clock.fill") {
                             DatePicker("", selection: $dateTime, displayedComponents: .hourAndMinute)
                                 .labelsHidden()
                                 .datePickerStyle(.compact)
                                 .tint(AppTheme.primary)
+                                .foregroundStyle(AppTheme.primary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(8)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
                                 .background(AppTheme.surface)
                                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(AppTheme.primary.opacity(0.35), lineWidth: 1))
@@ -130,7 +125,13 @@ struct CreateView: View {
                     }
 
                     labeled("Location", systemImage: "mappin.and.ellipse") {
-                        TextField("Building, room, or address", text: $location, axis: .vertical)
+                        TextField(
+                            "",
+                            text: $location,
+                            prompt: Text("Building, room, or address")
+                                .foregroundStyle(AppTheme.textSecondary.opacity(0.82)),
+                            axis: .vertical
+                        )
                             .lineLimit(1...3)
                             .focused($focusedField, equals: .location)
                             .foregroundStyle(AppTheme.primary)
@@ -177,18 +178,23 @@ struct CreateView: View {
                         HStack {
                             Button { decrementCapacity() } label: {
                                 Image(systemName: "minus")
+                                    .foregroundStyle(maxAttendees == nil ? Color(hex: "94A3B8") : AppTheme.primary)
                                     .frame(width: 40, height: 40)
-                                    .background(AppTheme.surface)
+                                    .background(maxAttendees == nil ? Color(hex: "EEF2F7") : AppTheme.surface)
                                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(AppTheme.primary.opacity(0.45), lineWidth: 1))
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 10)
+                                            .stroke(maxAttendees == nil ? Color(hex: "CBD5E1") : AppTheme.primary.opacity(0.45), lineWidth: 1)
+                                    )
                             }
                             .buttonStyle(.plain)
+                            .disabled(maxAttendees == nil)
                             Spacer()
                             Text(maxAttendees.map(String.init) ?? "Unlimited")
                                 .font(AppTheme.smallFont.weight(.semibold))
                                 .foregroundStyle(maxAttendees == nil ? Color(hex: "2D3A65") : .white)
                                 .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
+                                .frame(height: 40)
                                 .background(maxAttendees == nil ? .white : AppTheme.primary)
                                 .clipShape(Capsule())
                                 .overlay(
@@ -209,7 +215,13 @@ struct CreateView: View {
                     }
 
                     labeled("Description", systemImage: "text.alignleft") {
-                        TextField("What will you cover in this session?", text: $description, axis: .vertical)
+                        TextField(
+                            "",
+                            text: $description,
+                            prompt: Text("What will you cover in this session?")
+                                .foregroundStyle(AppTheme.textSecondary.opacity(0.82)),
+                            axis: .vertical
+                        )
                             .lineLimit(2...5)
                             .focused($focusedField, equals: .description)
                             .foregroundStyle(AppTheme.primary)
@@ -240,23 +252,23 @@ struct CreateView: View {
                             }
                             Spacer()
                         }
-                        .padding(.vertical, 12)
-                        .background(AppTheme.primary)
+                        .frame(height: 54)
+                        .background(isFormValid && !isSaving ? AppTheme.primary : Color(hex: "A8AFBF"))
                         .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .appPressEffect()
                     .disabled(isSaving || !isFormValid)
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 112)
-                    .padding(.bottom, 8)
+                    .padding(.top, 92)
+                    .padding(.bottom, 120)
                 }
             }
             .id(scrollResetToken)
-            .safeAreaPadding(.top, 36)
-            .safeAreaPadding(.bottom, 40)
+            .safeAreaPadding(.top, 28)
+            .safeAreaPadding(.bottom, 48)
             .scrollContentBackground(.hidden)
             .foregroundStyle(AppTheme.textPrimary)
             .navigationTitle(editingSessionId == nil ? "New Session" : "Edit Session")
@@ -282,7 +294,7 @@ struct CreateView: View {
     }
 
     private func labeled<Content: View>(_ text: String, systemImage: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             fieldTitleRow(text, systemImage: systemImage)
             content()
         }
@@ -292,33 +304,88 @@ struct CreateView: View {
         HStack(spacing: 6) {
             Image(systemName: systemImage)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.95))
+                .foregroundStyle(Color(hex: "9ED7FF"))
             Text(title)
                 .font(fieldTitleFont)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white.opacity(0.96))
         }
     }
 
     @ViewBuilder
     private var subjectPicker: some View {
-        Picker("Subject", selection: $subjectTag) {
-            ForEach(SubjectOption.defaults, id: \.self) { option in
-                Text(option).tag(option)
+        VStack(alignment: .leading, spacing: 8) {
+            Menu {
+                ForEach(SubjectOption.defaults, id: \.self) { option in
+                    Button(option) {
+                        subjectTag = option
+                        useCustomSubject = false
+                    }
+                }
+                Button("Custom…") {
+                    subjectTag = SubjectOption.customTag
+                    useCustomSubject = true
+                }
+            } label: {
+                HStack {
+                    Text(subjectPlaceholderText)
+                        .foregroundStyle(subjectSelectionEmpty ? AppTheme.textSecondary.opacity(0.82) : AppTheme.primary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(AppTheme.primary.opacity(0.8))
+                }
+                .font(.system(size: 16, weight: .medium))
+                .contentShape(Rectangle())
             }
-            Text("Custom…").tag(SubjectOption.customTag)
-        }
-        .onChange(of: subjectTag) { _, newValue in
-            useCustomSubject = newValue == SubjectOption.customTag
-        }
-        .pickerStyle(.navigationLink)
-        .tint(AppTheme.primary)
+            .buttonStyle(.plain)
 
-        if useCustomSubject {
-            TextField("Custom subject (e.g. CS 101)", text: $customSubject)
-                .textInputAutocapitalization(.words)
-                .focused($focusedField, equals: .customSubject)
-                .foregroundStyle(AppTheme.primary)
-                .tint(AppTheme.primary)
+            if !subjectSelectionEmpty {
+                Text(resolvedSubject.trimmingCharacters(in: .whitespacesAndNewlines))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(subjectColor.opacity(0.95))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(subjectColor.opacity(0.16))
+                    .clipShape(Capsule())
+            }
+
+            if useCustomSubject {
+                TextField(
+                    "",
+                    text: $customSubject,
+                    prompt: Text("Custom subject (e.g. CS 101)")
+                        .foregroundStyle(AppTheme.textSecondary.opacity(0.82))
+                )
+                    .textInputAutocapitalization(.words)
+                    .focused($focusedField, equals: .customSubject)
+                    .foregroundStyle(AppTheme.primary)
+                    .tint(AppTheme.primary)
+            }
+        }
+    }
+
+    private var subjectSelectionEmpty: Bool {
+        resolvedSubject.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var subjectPlaceholderText: String {
+        subjectSelectionEmpty ? "Select a subject" : "Selected subject"
+    }
+
+    private var subjectColor: Color {
+        switch resolvedSubject.lowercased() {
+        case let value where value.contains("math"):
+            return Color(hex: "3B82F6")
+        case let value where value.contains("biology"):
+            return Color(hex: "10B981")
+        case let value where value.contains("chemistry"):
+            return Color(hex: "06B6D4")
+        case let value where value.contains("physics"):
+            return Color(hex: "6366F1")
+        case let value where value.contains("computer science"), let value where value.contains("data"):
+            return Color(hex: "4F46E5")
+        default:
+            return Color(hex: "64748B")
         }
     }
 
@@ -383,7 +450,7 @@ struct CreateView: View {
 
     private func clearFormAfterSuccess() {
         title = ""
-        subjectTag = SubjectOption.defaults[0]
+        subjectTag = ""
         customSubject = ""
         useCustomSubject = false
         dateTime = Date().addingTimeInterval(3600)

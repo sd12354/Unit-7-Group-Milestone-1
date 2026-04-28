@@ -1,12 +1,11 @@
 import Foundation
-import FirebaseFirestore
 
 /// Firestore-backed model for a study session.
 /// Maps to the `sessions` collection (Milestone 2 — Issue 5).
 /// Fields align with spec: title, subject, dateTime (`startTime`), location, capacity (`maxAttendees`),
 /// attendees (`attendeeIds`), hostId, description.
 struct StudySession: Identifiable, Codable, Equatable {
-    @DocumentID var id: String?
+    var id: String?
 
     var title: String
     var subjectTag: String
@@ -20,7 +19,6 @@ struct StudySession: Identifiable, Codable, Equatable {
     var cancelled: Bool?
     var cancellationReason: String?
     var cancelledAt: Date?
-
 
     init(
         id: String? = nil,
@@ -37,7 +35,7 @@ struct StudySession: Identifiable, Codable, Equatable {
         cancellationReason: String? = nil,
         cancelledAt: Date? = nil
     ) {
-        _id = DocumentID(wrappedValue: id)
+        self.id = id
         self.title = title
         self.subjectTag = subjectTag
         self.startTime = startTime

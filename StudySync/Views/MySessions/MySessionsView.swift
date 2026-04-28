@@ -11,7 +11,8 @@ struct MySessionsView: View {
     @State private var loadError: String?
     @State private var selectedTab = "Hosting"
     @State private var navigationPath = NavigationPath()
-    @State private var cancellationAlerts: [SessionRepository.SessionCancellationNotice] = []
+    @State private var cancellationAlertMessage: String?
+    @State private var shownCancelledSessionIDs: Set<String> = []
 
     private var isSignedIn: Bool { Auth.auth().currentUser != nil }
 
@@ -109,16 +110,16 @@ struct MySessionsView: View {
             }
         }
         .task { await loadSessions() }
-        .alert(
-            "Session update",
-            isPresented: Binding(
-                get: { !cancellationAlerts.isEmpty },
-                set: { if !$0, !cancellationAlerts.isEmpty { cancellationAlerts.removeFirst() } }
-            )
-        ) {
-            Button("OK") { if !cancellationAlerts.isEmpty { cancellationAlerts.removeFirst() } }
+        .onReceive(NotificationCenter.default.publisher(for: .sessionMembershipDidChange)) { _ in
+            Task { await loadSessions() }
+        }
+        .alert("Session update", isPresented: Binding(
+            get: { cancellationAlertMessage != nil },
+            set: { if !$0 { cancellationAlertMessage = nil } }
+        )) {
+            Button("OK") { cancellationAlertMessage = nil }
         } message: {
-            Text(cancellationAlerts.first?.message ?? "")
+            Text(cancellationAlertMessage ?? "")
         }
     }
 
@@ -183,10 +184,15 @@ struct MySessionsView: View {
 
         loadError = errors.isEmpty ? nil : errors.joined(separator: "\n")
 
-        do {
-            cancellationAlerts = try await SessionRepository.consumeCancellationNotices()
-        } catch {
-            // Non-blocking: session lists should still render even if alerts fail.
+        if let cancelledJoinedSession = joinedSessions.first(where: { session in
+            guard session.isCancelled, let id = session.id else { return false }
+            return !shownCancelledSessionIDs.contains(id)
+        }), let id = cancelledJoinedSession.id {
+            shownCancelledSessionIDs.insert(id)
+            let reason = (cancelledJoinedSession.cancellationReason ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            cancellationAlertMessage = reason.isEmpty
+                ? "\(cancelledJoinedSession.title) was cancelled by the host."
+                : "\(cancelledJoinedSession.title) was cancelled: \(reason)"
         }
     }
 }
@@ -203,61 +209,102 @@ private struct MySessionRowView: View {
         .minute()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .top) {
-                Text(session.title)
-                    .font(AppTheme.labelFont)
-                    .lineLimit(2)
-                Spacer()
-                if session.isCancelled {
-                    Text("Cancelled")
-                        .font(AppTheme.smallFont)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(AppTheme.error.opacity(0.18))
-                        .foregroundStyle(AppTheme.error)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                if isHosting {
-                    Text("Host")
-                        .font(AppTheme.smallFont)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(AppTheme.primary)
-                        .foregroundStyle(AppTheme.surface)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                }
-                Text(session.subjectTag)
-                    .font(AppTheme.smallFont)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(AppTheme.tertiaryAccent)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            }
+        HStack(spacing: 14) {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(subjectAccent)
+                .frame(width: 4)
 
-            Label(session.startTime.formatted(Self.rowDate), systemImage: "calendar")
-                .font(AppTheme.bodyFont)
-                .foregroundStyle(AppTheme.textSecondary)
-            Label(session.locationText, systemImage: "mappin.and.ellipse")
-                .font(AppTheme.bodyFont)
-                .foregroundStyle(AppTheme.textSecondary)
-                .lineLimit(2)
+            VStack(alignment: .leading, spacing: 15) {
+                HStack(alignment: .top, spacing: 10) {
+                    Text(session.title)
+                        .font(.system(size: 29, weight: .bold))
+                        .lineLimit(2)
+                        .foregroundStyle(AppTheme.textPrimary)
+                    Spacer(minLength: 8)
+                    if session.isCancelled {
+                        Text("Cancelled")
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(hex: "FEE2E2"))
+                            .foregroundStyle(Color(hex: "B91C1C"))
+                            .clipShape(Capsule())
+                    }
+                    if isHosting {
+                        Text("Host")
+                            .font(.system(size: 12, weight: .semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color(hex: "DBEAFE"))
+                            .foregroundStyle(Color(hex: "1E40AF"))
+                            .clipShape(Capsule())
+                    }
+                    Text(session.subjectTag)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(subjectAccent.opacity(0.95))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(subjectAccent.opacity(0.18))
+                        .clipShape(Capsule())
+                }
 
-            Text(attendeesText)
-                .font(AppTheme.smallFont)
-                .foregroundStyle(AppTheme.textSecondary)
-            HStack {
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(AppTheme.textSecondary.opacity(0.55))
+                HStack(spacing: 9) {
+                    Image(systemName: "calendar.badge.clock")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(subjectAccent.opacity(0.95))
+                    Text(session.startTime.formatted(date: .abbreviated, time: .omitted))
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(AppTheme.textSecondary)
+                    Text("at")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary.opacity(0.75))
+                    Text(session.startTime.formatted(date: .omitted, time: .shortened))
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(AppTheme.textPrimary)
+                }
+
+                HStack(spacing: 9) {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.system(size: 17, weight: .semibold))
+                        .foregroundStyle(subjectAccent.opacity(0.9))
+                    Text(session.locationText)
+                        .font(.system(size: 17, weight: .medium))
+                        .foregroundStyle(AppTheme.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Spacer(minLength: 6)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(AppTheme.textSecondary.opacity(0.75))
+                        .padding(7)
+                        .background(AppTheme.surface)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(AppTheme.primary.opacity(0.2), lineWidth: 1))
+                        .accessibilityHidden(true)
+                }
+
+                HStack {
+                    Text(attendeesText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(spotsBadgeForeground)
+                        .padding(.horizontal, 12)
+                        .frame(height: 30)
+                        .background(spotsBadgeBackground)
+                        .clipShape(Capsule())
+                    Spacer()
+                }
             }
         }
-        .padding(16)
-        .foregroundStyle(AppTheme.textPrimary)
-        .appCardSurface()
-        .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+        .padding(20)
+        .background(AppTheme.surface)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(subjectAccent.opacity(0.18), lineWidth: 1)
+        )
+        .shadow(color: AppTheme.primary.opacity(0.14), radius: 12, y: 6)
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .listRowSeparator(.hidden)
     }
 
@@ -266,6 +313,46 @@ private struct MySessionRowView: View {
             return "\(session.attendeeCount) / \(max) attendees"
         }
         return "\(session.attendeeCount) attendees"
+    }
+
+    private var subjectAccent: Color {
+        let subject = session.subjectTag.lowercased()
+        if subject.contains("math") || subject.contains("stat") { return Color(hex: "3B82F6") }
+        if subject.contains("computer") || subject.contains("data") || subject.contains("engineering") { return Color(hex: "06B6D4") }
+        if subject.contains("biology") || subject.contains("nursing") || subject.contains("pre-med") { return Color(hex: "10B981") }
+        if subject.contains("chem") { return Color(hex: "8B5CF6") }
+        if subject.contains("physics") { return Color(hex: "F59E0B") }
+        return AppTheme.primary
+    }
+
+    private var spotsBadgeBackground: Color {
+        if let max = session.maxAttendees {
+            let spots = max - session.attendeeCount
+            switch spots {
+            case 4...:
+                return Color(hex: "DCFCE7")
+            case 2...3:
+                return Color(hex: "FEF3C7")
+            default:
+                return Color(hex: "FEE2E2")
+            }
+        }
+        return Color(hex: "DBEAFE")
+    }
+
+    private var spotsBadgeForeground: Color {
+        if let max = session.maxAttendees {
+            let spots = max - session.attendeeCount
+            switch spots {
+            case 4...:
+                return Color(hex: "166534")
+            case 2...3:
+                return Color(hex: "92400E")
+            default:
+                return Color(hex: "B91C1C")
+            }
+        }
+        return Color(hex: "1E40AF")
     }
 }
 

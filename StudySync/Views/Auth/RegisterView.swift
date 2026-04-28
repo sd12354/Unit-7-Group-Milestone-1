@@ -10,6 +10,9 @@ struct RegisterView: View {
     @State private var localMessage: String?
     @State private var localMessageIsError = true
     @FocusState private var focusedField: Field?
+    @State private var showPassword = false
+    /// Keep typed text and placeholder contrast readable on white fields.
+    private let inputTextColor = Color(white: 0.38)
 
     private enum Field: Hashable {
         case name
@@ -18,103 +21,169 @@ struct RegisterView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                Text("Create account")
-                    .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(AppTheme.textPrimary)
-                    .padding(.top, 8)
+        ZStack {
+            Image("AppGradientBackground")
+                .resizable()
+                .scaledToFill()
+                .ignoresSafeArea()
 
-                Text("Add your name so hosts know who you are.")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.textSecondary)
+            ScrollView {
+                VStack(spacing: 14) {
+                    VStack(spacing: 4) {
+                        Image("StudySyncLogoTransparent")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 64, height: 64)
+                            .padding(.bottom, 2)
+                        Text("Create Account")
+                            .font(AppTheme.titleFont)
+                            .foregroundStyle(.white)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
 
-                labeledField(title: "Name", content: {
-                    TextField("Alex Rivera", text: $displayName)
+                        Text("Add your name so hosts know who you are.")
+                            .font(AppTheme.bodyFont)
+                            .foregroundStyle(Color.white.opacity(0.9))
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.top, 76)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Name", systemImage: "person.fill")
+                            .font(AppTheme.bodyFont.weight(.medium))
+                            .foregroundStyle(.white)
+
+                        TextField(
+                            "",
+                            text: $displayName,
+                            prompt: Text("Alex Rivera").foregroundStyle(inputTextColor.opacity(0.65))
+                        )
                         .textInputAutocapitalization(.words)
                         .focused($focusedField, equals: .name)
+                        .foregroundStyle(inputTextColor)
+                        .tint(inputTextColor)
                         .padding(.horizontal, 14)
-                        .frame(height: 58)
+                        .frame(height: 52)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(focusedField == .name ? AppTheme.accent : AppTheme.primary.opacity(0.45), lineWidth: focusedField == .name ? 2.5 : 1.5)
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(focusedField == .name ? AppTheme.accent : AppTheme.primary.opacity(0.55), lineWidth: focusedField == .name ? 2.5 : 1.5)
                         )
-                })
+                    }
 
-                labeledField(title: "Email", content: {
-                    TextField("you@college.edu", text: $email)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Email", systemImage: "envelope.fill")
+                            .font(AppTheme.bodyFont.weight(.medium))
+                            .foregroundStyle(.white)
+
+                        TextField(
+                            "",
+                            text: $email,
+                            prompt: Text("johndoe@gmail.com").foregroundStyle(inputTextColor.opacity(0.65))
+                        )
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .focused($focusedField, equals: .email)
+                        .foregroundStyle(inputTextColor)
+                        .tint(inputTextColor)
                         .padding(.horizontal, 14)
-                        .frame(height: 58)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(focusedField == .email ? AppTheme.accent : AppTheme.primary.opacity(0.45), lineWidth: focusedField == .email ? 2.5 : 1.5)
-                        )
-                })
-
-                labeledField(title: "Password", content: {
-                    SecureField("At least 6 characters", text: $password)
-                        .textInputAutocapitalization(.never)
-                        .focused($focusedField, equals: .password)
-                        .padding(.horizontal, 14)
-                        .frame(height: 58)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 10)
-                                .stroke(focusedField == .password ? AppTheme.accent : AppTheme.primary.opacity(0.45), lineWidth: focusedField == .password ? 2.5 : 1.5)
-                        )
-                })
-
-                Button {
-                    Task { await submit() }
-                } label: {
-                    Text("Register")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 56)
-                        .background(AppTheme.primary)
+                        .frame(height: 52)
+                        .background(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                }
-                .appPressEffect()
-                .disabled(authViewModel.isLoading)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(focusedField == .email ? AppTheme.accent : AppTheme.primary.opacity(0.55), lineWidth: focusedField == .email ? 2.5 : 1.5)
+                        )
+                    }
 
-                if let message = localMessage, !message.isEmpty {
-                    Text(message)
-                        .font(.footnote)
-                        .foregroundStyle(localMessageIsError ? AppTheme.error : AppTheme.accent)
-                } else if let err = authViewModel.errorMessage, !err.isEmpty {
-                    Text(err)
-                        .font(.footnote)
-                        .foregroundStyle(AppTheme.error)
-                }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label("Password", systemImage: "lock.fill")
+                            .font(AppTheme.bodyFont.weight(.medium))
+                            .foregroundStyle(.white)
 
-                if authViewModel.isLoading {
-                    ProgressView()
-                        .tint(AppTheme.primary)
-                        .frame(maxWidth: .infinity)
-                }
+                        HStack(spacing: 8) {
+                            Group {
+                                if showPassword {
+                                    TextField(
+                                        "",
+                                        text: $password,
+                                        prompt: Text("At least 6 characters").foregroundStyle(inputTextColor.opacity(0.65))
+                                    )
+                                } else {
+                                    SecureField(
+                                        "",
+                                        text: $password,
+                                        prompt: Text("At least 6 characters").foregroundStyle(inputTextColor.opacity(0.65))
+                                    )
+                                }
+                            }
+                            .textInputAutocapitalization(.never)
+                            .focused($focusedField, equals: .password)
+                            .foregroundStyle(inputTextColor)
+                            .tint(inputTextColor)
 
-                Spacer(minLength: 24)
+                            Button {
+                                showPassword.toggle()
+                            } label: {
+                                Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                                    .foregroundStyle(AppTheme.primary.opacity(0.85))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 14)
+                        .frame(height: 52)
+                        .background(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(focusedField == .password ? AppTheme.accent : AppTheme.primary.opacity(0.55), lineWidth: focusedField == .password ? 2.5 : 1.5)
+                        )
+                    }
+
+                    Button {
+                        Task { await submit() }
+                    } label: {
+                        Text("Register")
+                            .font(AppTheme.labelFont)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 52)
+                            .background(AppTheme.primary)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                    .appPressEffect()
+                    .disabled(authViewModel.isLoading)
+
+                    if let message = localMessage, !message.isEmpty {
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundStyle(localMessageIsError ? AppTheme.error : AppTheme.accent)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    } else if let err = authViewModel.errorMessage, !err.isEmpty {
+                        Text(err)
+                            .font(.footnote)
+                            .foregroundStyle(AppTheme.error)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    if authViewModel.isLoading {
+                        ProgressView()
+                            .tint(AppTheme.primary)
+                            .frame(maxWidth: .infinity)
+                    }
+
+                    Spacer(minLength: 24)
+                }
+                .padding(.horizontal, 22)
+                .padding(.vertical, 6)
             }
-            .padding(.horizontal, 26)
         }
         .navigationTitle("Register")
         .navigationBarTitleDisplayMode(.inline)
-        .foregroundStyle(AppTheme.textPrimary)
-        .appBackground()
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-        }
-    }
-
-    private func labeledField<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.system(size: 18, weight: .semibold))
-            content()
         }
     }
 
