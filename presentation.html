@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StudySync — Team Presentation</title>
+<style>
+  :root {
+    --indigo: #4f46e5;
+    --violet: #7c3aed;
+    --sky: #0ea5e9;
+    --teal: #0d9488;
+    --amber: #f59e0b;
+    --rose: #f43f5e;
+    --slate-900: #0f172a;
+    --slate-800: #1e293b;
+    --slate-700: #334155;
+    --slate-300: #cbd5e1;
+    --slate-100: #f1f5f9;
+    --white: #ffffff;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+    background: var(--slate-900);
+    color: var(--white);
+    height: 100vh;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* ── Slideshow shell ─────────────────────────────────────────────── */
+  #deck {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 60px 80px;
+    opacity: 0;
+    transform: translateX(60px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+    pointer-events: none;
+    text-align: center;
+  }
+
+  .slide.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: all;
+  }
+
+  .slide.exit {
+    opacity: 0;
+    transform: translateX(-60px);
+    pointer-events: none;
+  }
+
+  /* ── Backgrounds ─────────────────────────────────────────────────── */
+  .bg-hero     { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #1e3a5f 100%); }
+  .bg-team     { background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0c1a2e 100%); }
+  .bg-problem  { background: linear-gradient(135deg, #1a0533 0%, #2d1b69 50%, #0f172a 100%); }
+  .bg-solution { background: linear-gradient(135deg, #042f2e 0%, #134e4a 50%, #0f172a 100%); }
+  .bg-demo     { background: linear-gradient(135deg, #0c2340 0%, #1e3a5f 50%, #0f2a1a 100%); }
+  .bg-next     { background: linear-gradient(135deg, #1c1917 0%, #292524 50%, #1a0f26 100%); }
+
+  /* ── Typography ──────────────────────────────────────────────────── */
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    opacity: 0.6;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+
+  h2 {
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  h3 {
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-weight: 600;
+  }
+
+  p {
+    font-size: clamp(0.95rem, 1.6vw, 1.25rem);
+    line-height: 1.65;
+    opacity: 0.85;
+    max-width: 680px;
+  }
+
+  .gradient-text {
+    background: linear-gradient(90deg, #818cf8, #38bdf8, #34d399);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .amber-text  { color: var(--amber); }
+  .rose-text   { color: var(--rose); }
+  .teal-text   { color: #34d399; }
+  .sky-text    { color: #38bdf8; }
+  .violet-text { color: #a78bfa; }
+
+  /* ── Cards & layout helpers ──────────────────────────────────────── */
+  .card-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 32px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    padding: 28px 32px;
+    min-width: 180px;
+    max-width: 260px;
+    flex: 1;
+    text-align: left;
+    backdrop-filter: blur(8px);
+  }
+
+  .card .icon {
+    font-size: 2rem;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .card h3 { margin-bottom: 6px; font-size: 1.05rem; }
+  .card p  { font-size: 0.88rem; opacity: 0.7; }
+
+  .pill {
+    display: inline-block;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 999px;
+    padding: 5px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin: 4px;
+  }
+
+  /* ── Slide 1: Hero ────────────────────────────────────────────────── */
+  .app-icon {
+    width: 96px;
+    height: 96px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, #6366f1, #0ea5e9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.6rem;
+    margin-bottom: 28px;
+    box-shadow: 0 20px 60px rgba(99,102,241,0.5);
+  }
+
+  .sub-tag {
+    margin-top: 18px;
+    font-size: 1rem;
+    opacity: 0.55;
+    letter-spacing: 0.02em;
+  }
+
+  .timer-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    height: 4px;
+    width: 0%;
+    background: linear-gradient(90deg, #6366f1, #38bdf8);
+    transition: width 0.3s linear;
+    z-index: 100;
+  }
+
+  /* ── Slide 2: Team ───────────────────────────────────────────────── */
+  .team-grid {
+    display: flex;
+    gap: 28px;
+    margin-top: 36px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .member {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 32px 36px;
+    text-align: center;
+    min-width: 180px;
+  }
+
+  .avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    margin: 0 auto 14px;
+  }
+
+  .av-indigo { background: linear-gradient(135deg, #6366f1, #818cf8); }
+  .av-violet { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
+  .av-teal   { background: linear-gradient(135deg, #0d9488, #34d399); }
+
+  .member h3 { font-size: 1.1rem; margin-bottom: 4px; }
+  .member .role { font-size: 0.8rem; opacity: 0.55; letter-spacing: 0.06em; text-transform: uppercase; }
+
+  /* ── Slide 3: Problem ────────────────────────────────────────────── */
+  .stat-row {
+    display: flex;
+    gap: 28px;
+    margin-top: 36px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .stat-box {
+    background: rgba(244,63,94,0.12);
+    border: 1px solid rgba(244,63,94,0.3);
+    border-radius: 18px;
+    padding: 28px 36px;
+    text-align: center;
+    flex: 1;
+    min-width: 170px;
+  }
+
+  .stat-box .num {
+    font-size: clamp(2rem, 4vw, 3rem);
+    font-weight: 800;
+    color: var(--rose);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .stat-box p { font-size: 0.88rem; opacity: 0.7; }
+
+  /* ── Slide 4: Solution ────────────────────────────────────────────── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 18px;
+    margin-top: 36px;
+    width: 100%;
+    max-width: 900px;
+  }
+
+  .feature-card {
+    background: rgba(13,148,136,0.1);
+    border: 1px solid rgba(52,211,153,0.2);
+    border-radius: 16px;
+    padding: 22px 24px;
+    text-align: left;
+  }
+
+  .feature-card .fi { font-size: 1.5rem; margin-bottom: 10px; }
+  .feature-card h3 { font-size: 0.95rem; margin-bottom: 6px; }
+  .feature-card p  { font-size: 0.82rem; opacity: 0.65; }
+
+  /* ── Slide 5: Demo ────────────────────────────────────────────────── */
+  .story-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 32px;
+    width: 100%;
+    max-width: 680px;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 18px 22px;
+    text-align: left;
+  }
+
+  .step-num {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #38bdf8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+  }
+
+  .step div h3 { font-size: 0.95rem; margin-bottom: 3px; }
+  .step div p  { font-size: 0.82rem; opacity: 0.65; }
+
+  /* ── Slide 6: Next Steps ─────────────────────────────────────────── */
+  .next-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+    margin-top: 36px;
+    width: 100%;
+    max-width: 800px;
+  }
+
+  .next-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 22px 26px;
+    text-align: left;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .nc-icon { font-size: 1.6rem; flex-shrink: 0; margin-top: 2px; }
+  .next-card h3 { font-size: 0.98rem; margin-bottom: 5px; }
+  .next-card p  { font-size: 0.83rem; opacity: 0.65; }
+
+  /* ── Navigation ──────────────────────────────────────────────────── */
+  #nav {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(15,23,42,0.8);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 999px;
+    padding: 10px 20px;
+    backdrop-filter: blur(12px);
+    z-index: 200;
+  }
+
+  #nav button {
+    background: none;
+    border: none;
+    color: var(--white);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    opacity: 0.7;
+    transition: opacity 0.2s, background 0.2s;
+  }
+
+  #nav button:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+  #nav button:disabled { opacity: 0.25; cursor: default; }
+
+  #slide-counter {
+    font-size: 0.78rem;
+    opacity: 0.5;
+    letter-spacing: 0.05em;
+    min-width: 48px;
+    text-align: center;
+  }
+
+  .dot-row {
+    display: flex;
+    gap: 6px;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    transition: background 0.3s, transform 0.3s;
+    cursor: pointer;
+  }
+
+  .dot.on {
+    background: #818cf8;
+    transform: scale(1.4);
+  }
+
+  /* keyboard hint */
+  .hint {
+    position: fixed;
+    top: 18px;
+    right: 24px;
+    font-size: 0.7rem;
+    opacity: 0.3;
+    letter-spacing: 0.04em;
+  }
+
+  /* slide number badge */
+  .slide-badge {
+    position: fixed;
+    top: 18px;
+    left: 24px;
+    font-size: 0.7rem;
+    opacity: 0.3;
+    letter-spacing: 0.04em;
+  }
+
+  /* divider */
+  .divider {
+    width: 60px;
+    height: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #818cf8, #38bdf8);
+    margin: 18px auto;
+  }
+
+  .spacer { margin-top: 20px; }
+
+  /* Tech stack pills */
+  .tech-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<div id="deck">
+
+  <!-- ── Slide 1: Title / Hero ──────────────────────────────────────── -->
+  <div class="slide bg-hero active" id="s0">
+    <div class="app-icon">📚</div>
+    <div class="eyebrow">CodePath iOS Development · Unit 7 Milestone</div>
+    <h1 class="gradient-text">StudySync</h1>
+    <div class="divider"></div>
+    <p>Find your study people.<br>Turn "we should study" into an actual plan.</p>
+    <p class="sub-tag">Sameer Dhanda · Noah Adeyeye · Joshua Donatien</p>
+    <div class="tech-row">
+      <span class="pill">Swift / SwiftUI</span>
+      <span class="pill">Firebase</span>
+      <span class="pill">Firestore</span>
+      <span class="pill">iOS</span>
+    </div>
+  </div>
+
+  <!-- ── Slide 2: Team Introductions ───────────────────────────────── -->
+  <div class="slide bg-team" id="s1">
+    <div class="eyebrow">Meet the Team</div>
+    <h2>The People Behind <span class="gradient-text">StudySync</span></h2>
+    <div class="team-grid">
+
+      <div class="member">
+        <div class="avatar av-indigo">SD</div>
+        <h3>Sameer Dhanda</h3>
+        <div class="role">Auth · UX Polish · Demo Tooling</div>
+      </div>
+
+      <div class="member">
+        <div class="avatar av-teal">NA</div>
+        <h3>Noah Adeyeye</h3>
+        <div class="role">Session Models · Firestore · Feed</div>
+      </div>
+
+      <div class="member">
+        <div class="avatar av-violet">JD</div>
+        <h3>Joshua Donatien</h3>
+        <div class="role">Profile · Filtering · Maps</div>
+      </div>
+
+    </div>
+    <div class="spacer"></div>
+    <p style="opacity:0.4;font-size:0.85rem;">Three engineers · Two sprints · One app shipped</p>
+  </div>
+
+  <!-- ── Slide 3: Problem / Pitch ───────────────────────────────────── -->
+  <div class="slide bg-problem" id="s2">
+    <div class="eyebrow">The Problem</div>
+    <h2>Study coordination is <span class="rose-text">broken</span></h2>
+    <div class="divider"></div>
+    <p>Students rely on scattered group chats, DMs, and hallway conversations to organise study sessions — most plans never materialise into an actual meeting.</p>
+    <div class="stat-row">
+      <div class="stat-box">
+        <div class="num">📱</div>
+        <p>Plans lost in group chats that never get actioned</p>
+      </div>
+      <div class="stat-box">
+        <div class="num">🤷</div>
+        <p>No easy way to find open study sessions near you</p>
+      </div>
+      <div class="stat-box">
+        <div class="num">⏰</div>
+        <p>No reminders — people forget and sessions fall apart</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Slide 4: Pitch / Solution ──────────────────────────────────── -->
+  <div class="slide bg-solution" id="s3">
+    <div class="eyebrow">The Solution</div>
+    <h2>StudySync turns plans into <span class="teal-text">sessions</span></h2>
+    <div class="divider"></div>
+    <div class="feature-grid">
+
+      <div class="feature-card">
+        <div class="fi">🔐</div>
+        <h3>Secure Accounts</h3>
+        <p>Email/password auth backed by Firebase — your identity travels with you.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="fi">📋</div>
+        <h3>Post a Session</h3>
+        <p>Title, subject, time, location, and a cap on attendees — in under a minute.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="fi">🔍</div>
+        <h3>Browse & Filter</h3>
+        <p>Live feed of upcoming sessions. Filter by subject or location keyword.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="fi">✅</div>
+        <h3>One-Tap Join</h3>
+        <p>Transactional join respects capacity limits. Leave just as easily.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="fi">🗺️</div>
+        <h3>Open in Maps</h3>
+        <p>Tap the location to jump straight to Apple Maps — no copy-paste needed.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="fi">👤</div>
+        <h3>Profiles</h3>
+        <p>Display name, bio, and a clean view of sessions you're hosting or joined.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Slide 5: Demo (story) ──────────────────────────────────────── -->
+  <div class="slide bg-demo" id="s4">
+    <div class="eyebrow">Live Demo</div>
+    <h2>A day in the life of a <span class="sky-text">StudySync</span> user</h2>
+    <div class="story-steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <h3>Sign Up &amp; Build a Profile</h3>
+          <p>Maya registers with her email, sets a display name, and adds a short bio so study partners know who she is.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <h3>Browse the Feed</h3>
+          <p>She opens the Home tab and sees upcoming CS 101 and Calculus sessions. She filters by "CS" to narrow things down.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <h3>Join a Session</h3>
+          <p>Maya taps a "CS 101 Finals Prep" card, reads the details, sees 3/5 spots taken, and hits <strong>Join</strong>. Done.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div>
+          <h3>Host Her Own</h3>
+          <p>She creates a Calculus study block for tomorrow at the library. Her friends see it in the feed and join.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Slide 6: Next Steps ────────────────────────────────────────── -->
+  <div class="slide bg-next" id="s5">
+    <div class="eyebrow">What's Next</div>
+    <h2>The road <span class="violet-text">ahead</span></h2>
+    <div class="divider"></div>
+    <div class="next-grid">
+
+      <div class="next-card">
+        <div class="nc-icon">🔔</div>
+        <div>
+          <h3>Push Notifications</h3>
+          <p>Remind attendees 1 hour before their session starts — no more no-shows.</p>
+        </div>
+      </div>
+
+      <div class="next-card">
+        <div class="nc-icon">💬</div>
+        <div>
+          <h3>In-Session Chat</h3>
+          <p>A lightweight group chat per session so attendees can coordinate last-minute details.</p>
+        </div>
+      </div>
+
+      <div class="next-card">
+        <div class="nc-icon">🔁</div>
+        <div>
+          <h3>Recurring Sessions</h3>
+          <p>Mark a session as "weekly" — great for study groups that meet every Thursday.</p>
+        </div>
+      </div>
+
+      <div class="next-card">
+        <div class="nc-icon">🏫</div>
+        <div>
+          <h3>School Verification</h3>
+          <p>Verify via .edu email to keep feeds campus-specific and build trust in the community.</p>
+        </div>
+      </div>
+
+    </div>
+    <div class="spacer"></div>
+    <p style="opacity:0.35;font-size:0.82rem;">Core loop: Auth → Browse → Join → Host &nbsp;✓ &nbsp;shipped</p>
+  </div>
+
+</div><!-- /deck -->
+
+<!-- Controls -->
+<div id="nav">
+  <button id="prevBtn" onclick="go(-1)" disabled>←</button>
+  <div class="dot-row" id="dots"></div>
+  <button id="nextBtn" onclick="go(1)">→</button>
+</div>
+
+<div class="hint">← → arrow keys to navigate</div>
+<div class="slide-badge" id="badge">1 / 6</div>
+<div class="timer-bar" id="timerBar"></div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const dots   = document.getElementById('dots');
+  const badge  = document.getElementById('badge');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  let cur = 0;
+
+  // Build dots
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' on' : '');
+    d.onclick = () => goTo(i);
+    dots.appendChild(d);
+  });
+
+  function goTo(n) {
+    if (n < 0 || n >= slides.length) return;
+    slides[cur].classList.remove('active');
+    slides[cur].classList.add('exit');
+    setTimeout(() => slides[cur].classList.remove('exit'), 500);
+    cur = n;
+    slides[cur].classList.add('active');
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('on', i === cur));
+    badge.textContent = (cur + 1) + ' / ' + slides.length;
+    prevBtn.disabled = cur === 0;
+    nextBtn.disabled = cur === slides.length - 1;
+    // timer bar represents progress
+    document.getElementById('timerBar').style.width = ((cur + 1) / slides.length * 100) + '%';
+  }
+
+  function go(dir) { goTo(cur + dir); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); go(1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); go(-1); }
+  });
+
+  // Touch / swipe support
+  let touchX = null;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend',   e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) go(dx < 0 ? 1 : -1);
+    touchX = null;
+  });
+</script>
+</body>
+</html>
