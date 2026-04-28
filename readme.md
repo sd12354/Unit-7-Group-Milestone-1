@@ -123,7 +123,7 @@ Figma Mockups
 _Add link or embed GIF/video of tap-through prototype._
 
 ## Milestone #1
-https://i.imgflip.com/aqbm0v.gif
+![GIF](https://i.imgflip.com/aqbm0v.gif)
 
 ## Milestone #2
 ![My GIF](https://i.imgflip.com/aqblt0.gif)
