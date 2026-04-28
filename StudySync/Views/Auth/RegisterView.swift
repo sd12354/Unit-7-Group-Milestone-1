@@ -9,24 +9,36 @@ struct RegisterView: View {
     @State private var password = ""
     @State private var localMessage: String?
     @State private var localMessageIsError = true
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case name
+        case email
+        case password
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 Text("Create account")
                     .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(AppTheme.textPrimary)
                     .padding(.top, 8)
 
                 Text("Add your name so hosts know who you are.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(AppTheme.textSecondary)
 
                 labeledField(title: "Name", content: {
                     TextField("Alex Rivera", text: $displayName)
                         .textInputAutocapitalization(.words)
+                        .focused($focusedField, equals: .name)
                         .padding(.horizontal, 14)
                         .frame(height: 58)
-                        .overlay(RoundedRectangle(cornerRadius: 0).stroke(Color.secondary.opacity(0.45)))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(focusedField == .name ? AppTheme.accent : AppTheme.primary.opacity(0.45), lineWidth: focusedField == .name ? 2.5 : 1.5)
+                        )
                 })
 
                 labeledField(title: "Email", content: {
@@ -34,17 +46,25 @@ struct RegisterView: View {
                         .keyboardType(.emailAddress)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .focused($focusedField, equals: .email)
                         .padding(.horizontal, 14)
                         .frame(height: 58)
-                        .overlay(RoundedRectangle(cornerRadius: 0).stroke(Color.secondary.opacity(0.45)))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(focusedField == .email ? AppTheme.accent : AppTheme.primary.opacity(0.45), lineWidth: focusedField == .email ? 2.5 : 1.5)
+                        )
                 })
 
                 labeledField(title: "Password", content: {
                     SecureField("At least 6 characters", text: $password)
                         .textInputAutocapitalization(.never)
+                        .focused($focusedField, equals: .password)
                         .padding(.horizontal, 14)
                         .frame(height: 58)
-                        .overlay(RoundedRectangle(cornerRadius: 0).stroke(Color.secondary.opacity(0.45)))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10)
+                                .stroke(focusedField == .password ? AppTheme.accent : AppTheme.primary.opacity(0.45), lineWidth: focusedField == .password ? 2.5 : 1.5)
+                        )
                 })
 
                 Button {
@@ -55,22 +75,25 @@ struct RegisterView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(Color.black)
+                        .background(AppTheme.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 }
+                .appPressEffect()
                 .disabled(authViewModel.isLoading)
 
                 if let message = localMessage, !message.isEmpty {
                     Text(message)
                         .font(.footnote)
-                        .foregroundStyle(localMessageIsError ? .red : .green)
+                        .foregroundStyle(localMessageIsError ? AppTheme.error : AppTheme.accent)
                 } else if let err = authViewModel.errorMessage, !err.isEmpty {
                     Text(err)
                         .font(.footnote)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(AppTheme.error)
                 }
 
                 if authViewModel.isLoading {
                     ProgressView()
+                        .tint(AppTheme.primary)
                         .frame(maxWidth: .infinity)
                 }
 
@@ -80,7 +103,8 @@ struct RegisterView: View {
         }
         .navigationTitle("Register")
         .navigationBarTitleDisplayMode(.inline)
-        .background(Color(.systemGray6))
+        .foregroundStyle(AppTheme.textPrimary)
+        .appBackground()
         .onTapGesture {
             UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         }

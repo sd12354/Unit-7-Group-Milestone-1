@@ -17,6 +17,10 @@ struct StudySession: Identifiable, Codable, Equatable {
     var maxAttendees: Int?
     var hostId: String
     var attendeeIds: [String]
+    var cancelled: Bool?
+    var cancellationReason: String?
+    var cancelledAt: Date?
+
 
     init(
         id: String? = nil,
@@ -28,7 +32,10 @@ struct StudySession: Identifiable, Codable, Equatable {
         description: String,
         maxAttendees: Int?,
         hostId: String,
-        attendeeIds: [String] = []
+        attendeeIds: [String] = [],
+        cancelled: Bool? = false,
+        cancellationReason: String? = nil,
+        cancelledAt: Date? = nil
     ) {
         _id = DocumentID(wrappedValue: id)
         self.title = title
@@ -40,6 +47,9 @@ struct StudySession: Identifiable, Codable, Equatable {
         self.maxAttendees = maxAttendees
         self.hostId = hostId
         self.attendeeIds = attendeeIds
+        self.cancelled = cancelled
+        self.cancellationReason = cancellationReason
+        self.cancelledAt = cancelledAt
     }
 
     /// Spots left for attendees (host excluded). `nil` max means unlimited.
@@ -56,4 +66,9 @@ struct StudySession: Identifiable, Codable, Equatable {
     var attendeeCount: Int {
         attendeeIds.count
     }
+
+    var isCancelled: Bool {
+        cancelled == true
+    }
+
 }

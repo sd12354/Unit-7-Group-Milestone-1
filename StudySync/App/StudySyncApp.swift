@@ -4,8 +4,11 @@ import FirebaseCore
 import GoogleSignIn
 #endif
 
+final class AppDelegate: NSObject, UIApplicationDelegate {}
+
 @main
 struct StudySyncApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     init() {
         FirebaseApp.configure()
